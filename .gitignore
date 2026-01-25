@@ -32,6 +32,10 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# AI tools internal
+.agent/
+.claude/settings.local.json
 *.swp
 *.swo
 *~
