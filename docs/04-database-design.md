@@ -464,7 +464,3 @@ class Ticket {
 - [API設計](./03-api-design.md)
 - [ドメインモデル](./02-design/domain-model.md)
 
----
-
-**更新履歴:**
-- 2026-02-01: 初版作成（architecture.md、detailed-design.mdから統合）

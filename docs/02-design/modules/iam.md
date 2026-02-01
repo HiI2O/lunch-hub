@@ -240,11 +240,3 @@ interface SessionRepository {
 | `ReactivateUserUseCase` | ユーザー再有効化 | ADMINISTRATOR |
 | `GetUserProfileUseCase` | プロフィール取得 | 認証済み      |
 
----
-
-## 今後の拡張
-
-### Phase 2
-- 二要素認証(2FA)
-- セッション管理画面（アクティブセッション一覧、個別無効化）
-- 監査ログ画面

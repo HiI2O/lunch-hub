@@ -924,7 +924,3 @@ Authorization: Bearer <accessToken>
 - [データベース設計](./04-database-design.md)
 - [IAMモジュール設計](./02-design/modules/iam-module.md)
 
----
-
-**更新履歴:**
-- 2026-02-01: 初版作成（architecture.md、detailed-design.md、authentication-architecture.mdから統合）

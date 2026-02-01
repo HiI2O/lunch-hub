@@ -220,7 +220,3 @@ https://lunch-hub.example.com/reset-password?token={{token}}
 ※再設定を行わない場合、現在のパスワードが引き続き有効です。
 ```
 
----
-
-**更新履歴:**
-- 2026-02-01: 初版作成（`iam-module.md` から処理フロー部分を移動）
