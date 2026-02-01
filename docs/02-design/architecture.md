@@ -145,14 +145,14 @@ graph TB
     Reservation[Reservation Context<br/>Reservation, Guest]
     Order[Order Context<br/>Order]
     Ticket[Ticket Context<br/>Ticket]
-    
+
     IAM -->|UserId, Role| Reservation
     IAM -->|UserId, Role| Order
     IAM -->|UserId| Ticket
-    
+
     Reservation -->|ReservationId| Order
     Reservation -->|TicketId| Ticket
-    
+
     style IAM fill:#e1f5ff
     style Reservation fill:#fff4e1
     style Order fill:#f0e1ff
@@ -341,253 +341,6 @@ lunch-hub/
     └── vite.config.ts
 ```
 
-## データベース設計
-
-### PostgreSQL スキーマ
-
-#### users テーブル
-```sql
-CREATE TABLE users (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  email VARCHAR(255) UNIQUE NOT NULL,
-  display_name VARCHAR(255) NOT NULL,
-  password_hash VARCHAR(255),
-  role VARCHAR(50) NOT NULL, -- GENERAL_USER, STAFF, ADMINISTRATOR
-  status VARCHAR(50) NOT NULL, -- INVITED, ACTIVE, DEACTIVATED
-  
-  -- 招待情報
-  invitation_token VARCHAR(255) UNIQUE,
-  invitation_token_expires_at TIMESTAMP,
-  invited_by UUID REFERENCES users(id),
-  invited_at TIMESTAMP,
-  activated_at TIMESTAMP,
-  
-  -- タイムスタンプ
-  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  last_login_at TIMESTAMP,
-  
-  CONSTRAINT chk_status CHECK (status IN ('INVITED', 'ACTIVE', 'DEACTIVATED')),
-  CONSTRAINT chk_role CHECK (role IN ('GENERAL_USER', 'STAFF', 'ADMINISTRATOR'))
-);
-
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_users_status ON users(status);
-CREATE INDEX idx_users_invitation_token ON users(invitation_token);
-```
-
-#### reservations テーブル
-```sql
-CREATE TABLE reservations (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES users(id),
-  guest_id UUID REFERENCES guests(id),
-  reservation_date DATE NOT NULL,
-  payment_method VARCHAR(50) NOT NULL, -- CASH, TICKET
-  status VARCHAR(50) NOT NULL, -- CONFIRMED, CANCELLED, FINALIZED
-  ticket_id UUID REFERENCES tickets(id),
-  order_id UUID REFERENCES orders(id),
-  
-  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  version INTEGER NOT NULL DEFAULT 1,
-  
-  CONSTRAINT chk_payment_method CHECK (payment_method IN ('CASH', 'TICKET')),
-  CONSTRAINT chk_status CHECK (status IN ('CONFIRMED', 'CANCELLED', 'FINALIZED')),
-  CONSTRAINT chk_ticket_payment CHECK (
-    (payment_method = 'TICKET' AND ticket_id IS NOT NULL) OR
-    (payment_method = 'CASH' AND ticket_id IS NULL)
-  )
-);
-
-CREATE INDEX idx_reservations_user_id ON reservations(user_id);
-CREATE INDEX idx_reservations_date ON reservations(reservation_date);
-CREATE INDEX idx_reservations_status ON reservations(status);
-CREATE INDEX idx_reservations_order_id ON reservations(order_id);
-```
-
-#### orders テーブル
-```sql
-CREATE TABLE orders (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  order_date DATE NOT NULL UNIQUE,
-  status VARCHAR(50) NOT NULL, -- PENDING, PLACED
-  total_count INTEGER NOT NULL DEFAULT 0,
-  
-  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  version INTEGER NOT NULL DEFAULT 1,
-  placed_at TIMESTAMP,
-  
-  CONSTRAINT chk_status CHECK (status IN ('PENDING', 'PLACED'))
-);
-
-CREATE INDEX idx_orders_date ON orders(order_date);
-CREATE INDEX idx_orders_status ON orders(status);
-```
-
-#### tickets テーブル
-```sql
-CREATE TABLE tickets (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  owner_id UUID NOT NULL REFERENCES users(id),
-  remaining_count INTEGER NOT NULL DEFAULT 0,
-  status VARCHAR(50) NOT NULL, -- PENDING, RECEIVED
-  purchase_date DATE NOT NULL,
-  purchase_reservation_id UUID REFERENCES ticket_purchase_reservations(id),
-  
-  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  version INTEGER NOT NULL DEFAULT 1,
-  
-  CONSTRAINT chk_status CHECK (status IN ('PENDING', 'RECEIVED')),
-  CONSTRAINT chk_remaining_count CHECK (remaining_count >= 0)
-);
-
-CREATE INDEX idx_tickets_owner_id ON tickets(owner_id);
-CREATE INDEX idx_tickets_status ON tickets(status);
-```
-
-#### ticket_purchase_reservations テーブル
-```sql
-CREATE TABLE ticket_purchase_reservations (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES users(id),
-  purchase_date DATE NOT NULL,
-  quantity INTEGER NOT NULL DEFAULT 1, -- セット数
-  status VARCHAR(50) NOT NULL, -- PENDING, RECEIVED, CANCELLED
-  
-  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  version INTEGER NOT NULL DEFAULT 1,
-  
-  CONSTRAINT chk_status CHECK (status IN ('PENDING', 'RECEIVED', 'CANCELLED')),
-  CONSTRAINT chk_quantity CHECK (quantity > 0)
-);
-
-CREATE INDEX idx_ticket_purchases_user_id ON ticket_purchase_reservations(user_id);
-CREATE INDEX idx_ticket_purchases_date ON ticket_purchase_reservations(purchase_date);
-```
-
-#### guests テーブル
-```sql
-CREATE TABLE guests (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  guest_name VARCHAR(255) NOT NULL,
-  created_by_staff_id UUID NOT NULL REFERENCES users(id),
-  visit_date DATE NOT NULL,
-  
-  created_at TIMESTAMP NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX idx_guests_visit_date ON guests(visit_date);
-CREATE INDEX idx_guests_staff_id ON guests(created_by_staff_id);
-```
-
-#### password_reset_tokens テーブル
-```sql
-CREATE TABLE password_reset_tokens (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  token VARCHAR(255) UNIQUE NOT NULL,
-  expires_at TIMESTAMP NOT NULL,
-  created_at TIMESTAMP NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX idx_password_reset_tokens_token ON password_reset_tokens(token);
-CREATE INDEX idx_password_reset_tokens_user_id ON password_reset_tokens(user_id);
-```
-
-### Redis データ構造
-
-```
-# セッション
-session:{sessionId} = {
-  userId: string,
-  refreshToken: string,
-  createdAt: timestamp,
-  lastAccessedAt: timestamp
-}
-TTL: 7 days
-
-# リフレッシュトークンマッピング
-refreshToken:{token} = sessionId
-TTL: 7 days
-
-# ユーザーのアクティブセッション
-user:{userId}:sessions = Set<sessionId>
-TTL: 7 days
-
-# レート制限
-login:attempts:{email} = count
-TTL: 15 minutes
-
-# キャッシュ(将来的に)
-cache:user:{userId} = User JSON
-TTL: 1 hour
-```
-
-## API設計
-
-### 認証関連
-```
-POST   /api/auth/login              # ログイン
-POST   /api/auth/logout             # ログアウト
-POST   /api/auth/refresh            # トークン更新
-POST   /api/auth/activate           # アカウントアクティベーション
-POST   /api/auth/forgot-password    # パスワードリセット要求
-POST   /api/auth/reset-password     # パスワードリセット
-GET    /api/auth/me                 # 現在のユーザー情報
-```
-
-### ユーザー管理
-```
-GET    /api/users/me                # 自分のプロフィール
-PUT    /api/users/me                # プロフィール更新
-PUT    /api/users/me/password       # パスワード変更
-```
-
-### 管理者機能
-```
-POST   /api/admin/users/invite      # ユーザー招待
-GET    /api/admin/users             # ユーザー一覧
-PUT    /api/admin/users/:id/deactivate    # ユーザー無効化
-PUT    /api/admin/users/:id/reactivate    # ユーザー再有効化
-```
-
-### 予約管理
-```
-GET    /api/reservations            # 予約一覧(自分の予約)
-POST   /api/reservations            # 予約作成
-GET    /api/reservations/:id        # 予約詳細
-PUT    /api/reservations/:id        # 予約変更
-DELETE /api/reservations/:id        # 予約キャンセル
-GET    /api/reservations/calendar   # カレンダー表示用
-```
-
-### 係専用 - 予約管理
-```
-GET    /api/staff/reservations      # 全予約一覧
-POST   /api/staff/guests            # ゲスト作成
-POST   /api/staff/reservations/guest # ゲスト予約作成
-```
-
-### 注文管理(係・管理者)
-```
-GET    /api/orders                  # 注文一覧
-GET    /api/orders/:date            # 特定日の注文詳細
-POST   /api/orders/:date/place      # 注文確定
-```
-
-### チケット管理
-```
-GET    /api/tickets                 # 自分のチケット一覧
-POST   /api/tickets/purchase        # チケット購入予約
-GET    /api/tickets/:id             # チケット詳細
-PUT    /api/tickets/:id/receive     # チケット受取確認(係)
-DELETE /api/tickets/purchases/:id   # チケット購入予約キャンセル
-```
-
 ## セキュリティ設計
 
 ### 認証フロー
@@ -656,24 +409,20 @@ sequenceDiagram
    - アクセストークン(15m)が切れた際、フロントエンド（Axios Interceptor）でリフレッシュトークンを用いてサイレントリフレッシュを行う。
    - リフレッシュトークンも期限切れの場合は、強制ログアウトし、ログイン画面へ遷移する。
 
-4. **CORS**
+5. **CORS**
    - フロントエンドのオリジンのみ許可
 
-5. **CSRF対策**
+6. **CSRF対策**
    - SameSite cookie
    - CSRFトークン
 
-6. **その他**
+7. **その他**
    - Helmet.js (セキュリティヘッダー)
    - 入力バリデーション
    - SQLインジェクション対策(TypeORM)
    - XSS対策(サニタイゼーション)
 
-## システムの想定規模
-- **想定ユーザー数**: 最大50名程度
-- **同時接続数**: 10名程度
-- **1日の予約数**: 30〜40件程度
-- **データサイズ**: 数年間運用しても数GB以内に収まる想定
+## 環境変数
 
 ```env
 # Application
@@ -769,6 +518,12 @@ volumes:
 - コンテナオーケストレーション(Kubernetes、ECS等)検討
 - マネージドサービス活用(RDS、ElastiCache等)
 
+## システムの想定規模
+- **想定ユーザー数**: 最大50名程度
+- **同時接続数**: 10名程度
+- **1日の予約数**: 30〜40件程度
+- **データサイズ**: 数年間運用しても数GB以内に収まる想定
+
 ## テスト戦略
 
 ### 単体テスト
@@ -805,6 +560,13 @@ volumes:
    - 遅延ローディング
    - 最適化されたバンドル
 
+## 関連ドキュメント
+
+- [API設計](../03-api-design.md) - 全APIエンドポイントの詳細
+- [データベース設計](../04-database-design.md) - PostgreSQLスキーマとRedisデータ構造
+- [ドメインモデル](./domain-model.md) - 集約と値オブジェクトの定義
+- [IAMモジュール設計](./modules/iam-module.md) - 認証機能の詳細設計
+
 ## 今後の拡張
 
 ### Phase 2
@@ -816,3 +578,9 @@ volumes:
 - モバイルアプリ
 - 外部システム連携
 - 高度な分析機能
+
+---
+
+**更新履歴:**
+- 2025-11-30: 初版作成
+- 2026-02-01: ドキュメント再編成（API設計・DB設計を別ファイルに分離）
