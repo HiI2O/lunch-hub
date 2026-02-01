@@ -7,14 +7,14 @@ Lunch Hubアプリケーション全体(認証機能 + コア機能)を段階的
 ## 前提条件
 
 ### 完了している設計ドキュメント
-- ✅ [要件定義](./requirements.md)
-- ✅ [ユビキタス言語](./ubiquitous-language.md)
-- ✅ [ドメインモデル](./domain-model.md)
-- ✅ [アーキテクチャ設計](./architecture.md)
-- ✅ [認証機能 - 要件定義](./authentication-requirements.md)
-- ✅ [認証機能 - ユビキタス言語](./authentication-ubiquitous-language.md)
-- ✅ [認証機能 - ドメインモデル](./authentication-domain-model.md)
-- ✅ [認証機能 - アーキテクチャ](./authentication-architecture.md)
+- [要件定義](./01-requirements.md)
+- [ユビキタス言語](./02-design/ubiquitous-language.md)
+- [ドメインモデル](./02-design/domain-model.md)
+- [アーキテクチャ設計](./02-design/architecture.md)
+- [IAMモジュール設計](./02-design/modules/iam-module.md)
+- [API設計](./03-api-design.md)
+- [データベース設計](./04-database-design.md)
+- [基本設計](./05-basic-design.md)
 
 ### 技術スタック確認
 - Backend: NestJS + TypeScript + PostgreSQL + Redis
@@ -26,24 +26,24 @@ Lunch Hubアプリケーション全体(認証機能 + コア機能)を段階的
 
 > [!IMPORTANT]
 > **実装の優先順位**
-> 
+>
 > この計画では、以下の優先順位で実装を進めます:
 > 1. Phase 1: 基盤 + IAM (認証・認可)
 > 2. Phase 2: 予約管理
 > 3. Phase 3: チケット管理 + 注文管理
 > 4. Phase 4: 管理機能 + UI改善
-> 
+>
 > 各フェーズ完了後に動作確認を行い、問題がなければ次のフェーズに進みます。
 
 > [!WARNING]
 > **開発環境のセットアップが必要**
-> 
+>
 > 実装開始前に以下の準備が必要です:
 > - Node.js 18.x以上のインストール
 > - PostgreSQL 15.xのインストール(またはDocker)
 > - Redis 7.xのインストール(またはDocker)
 > - Gmailアカウント(開発用メール送信)
-> 
+>
 > Docker Composeを使用する場合は、Dockerのみで構いません。
 
 ## 実装フェーズ
@@ -242,3 +242,9 @@ Lunch Hubアプリケーション全体(認証機能 + コア機能)を段階的
 2. テスト駆動開発(TDD)
 3. コミット粒度を意識
 4. コードレビュー
+
+---
+
+**更新履歴:**
+- 2025-12-01: 初版作成
+- 2026-02-01: ドキュメント再編成（参照リンクを更新）

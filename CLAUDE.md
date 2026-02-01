@@ -66,9 +66,12 @@ docker compose up -d
 4. インフラ層とプレゼンテーション層を実装
 
 ## 参考ドキュメント
-- `docs/basic-design.md` - 基本設計書（図解、画面遷移）
-- `docs/detailed-design.md` - 詳細設計書（ERD、API、シーケンス図）
-- `docs/implementation_plan.md` - 統合実装計画（フェーズごとのタスク）
-- `docs/domain-model.md` - ドメインモデル
-- `docs/architecture.md` - アーキテクチャ設計
-- `docs/ubiquitous-language.md` - ユビキタス言語
+- `docs/01-requirements.md` - 要件定義（機能要件・非機能要件）
+- `docs/02-design/architecture.md` - アーキテクチャ設計
+- `docs/02-design/domain-model.md` - ドメインモデル
+- `docs/02-design/ubiquitous-language.md` - ユビキタス言語
+- `docs/02-design/modules/iam-module.md` - IAMモジュール設計（認証・認可）
+- `docs/03-api-design.md` - API設計
+- `docs/04-database-design.md` - データベース設計
+- `docs/05-basic-design.md` - 基本設計書（図解、画面遷移）
+- `docs/06-implementation-plan.md` - 統合実装計画（フェーズごとのタスク）

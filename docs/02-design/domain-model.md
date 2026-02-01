@@ -1,10 +1,43 @@
-# ドメインモデル図
+# ドメインモデル
 
 > このドキュメントは、Lunch-Hub システムのドメインモデルを視覚化し、エンティティ、値オブジェクト、集約、およびそれらの関係を定義します。
 
 ---
 
-## 📊 ドメインモデル全体図
+## 境界づけられたコンテキスト (Bounded Contexts)
+
+```mermaid
+graph TB
+    subgraph "IAM Context"
+        User[User集約]
+        Session[Session集約]
+    end
+
+    subgraph "Reservation Context"
+        Reservation[予約集約]
+        Guest[ゲスト集約]
+    end
+
+    subgraph "Order Context"
+        Order[注文集約]
+    end
+
+    subgraph "Ticket Context"
+        Ticket[チケット集約]
+    end
+
+    User -->|userId| Reservation
+    User -->|userId| Ticket
+    User -->|staffId| Guest
+    Session -->|userId| User
+    Reservation -->|ticketId| Ticket
+    Reservation -->|orderId| Order
+    Guest -->|guestId| Reservation
+```
+
+---
+
+## ドメインモデル全体図
 
 ```mermaid
 classDiagram
@@ -13,14 +46,23 @@ classDiagram
         +UUID userId
         +DisplayName displayName
         +EmailAddress emailAddress
-        +Password password
+        +PasswordHash passwordHash
         +Role role
+        +UserStatus status
+        +InvitationToken invitationToken
+        +DateTime invitedAt
+        +UUID invitedBy
+        +DateTime activatedAt
         +DateTime createdAt
-        +DateTime lastLoginAt
-        +Boolean isActive
-        +login()
-        +logout()
-        +hasPermission()
+        +DateTime updatedAt
+        +activate()
+        +changePassword()
+        +initiatePasswordReset()
+        +resetPassword()
+        +deactivate()
+        +reactivate()
+        +isActive()
+        +canLogin()
     }
 
     class Role {
@@ -28,6 +70,27 @@ classDiagram
         GENERAL_USER
         STAFF
         ADMINISTRATOR
+    }
+
+    class UserStatus {
+        <<enumeration>>
+        INVITED
+        ACTIVE
+        DEACTIVATED
+    }
+
+    %% セッション集約
+    class Session {
+        +UUID sessionId
+        +UUID userId
+        +AccessToken accessToken
+        +RefreshToken refreshToken
+        +Boolean isRevoked
+        +DateTime createdAt
+        +DateTime lastAccessedAt
+        +refreshAccessToken()
+        +revoke()
+        +isValid()
     }
 
     %% 予約集約
@@ -135,11 +198,42 @@ classDiagram
         +equals()
     }
 
-    class Password {
+    class PasswordHash {
         <<value object>>
         +String hashedValue
         +verify()
-        +meetsRequirements()
+    }
+
+    class InvitationToken {
+        <<value object>>
+        +String value
+        +DateTime expiresAt
+        +isExpired()
+        +isValid()
+    }
+
+    class PasswordResetToken {
+        <<value object>>
+        +String value
+        +DateTime expiresAt
+        +UUID userId
+        +isExpired()
+        +isValid()
+    }
+
+    class AccessToken {
+        <<value object>>
+        +String value
+        +DateTime expiresAt
+        +isExpired()
+        +verify()
+    }
+
+    class RefreshToken {
+        <<value object>>
+        +String value
+        +DateTime expiresAt
+        +isExpired()
     }
 
     class TicketCount {
@@ -176,14 +270,21 @@ classDiagram
     %% 関係性
     User "1" --> "1" DisplayName : has
     User "1" --> "1" EmailAddress : has
-    User "1" --> "1" Password : has
-    Ticket "1" --> "1" TicketCount : has
-    TicketPurchaseReservation "1" --> "1" TicketSetQuantity : has
+    User "1" --> "1" PasswordHash : has
     User "1" --> "1" Role : has
+    User "1" --> "1" UserStatus : has
+    User "1" --> "0..1" InvitationToken : has
     User "1" --> "0..*" Reservation : makes
     User "1" --> "0..*" Ticket : owns
     User "1" --> "0..*" TicketPurchaseReservation : makes
     User "1" --> "0..*" Guest : creates (staff only)
+    User "1" --> "0..*" Session : has
+
+    Session "1" --> "1" AccessToken : has
+    Session "1" --> "1" RefreshToken : has
+
+    Ticket "1" --> "1" TicketCount : has
+    TicketPurchaseReservation "1" --> "1" TicketSetQuantity : has
 
     Reservation "1" --> "1" PaymentMethod : uses
     Reservation "1" --> "1" ReservationStatus : has
@@ -203,7 +304,7 @@ classDiagram
 
 ---
 
-## 🏗️ 集約（Aggregate）の定義
+## 集約（Aggregate）の定義
 
 DDDでは、関連するエンティティと値オブジェクトを**集約**としてグループ化します。各集約には**集約ルート**があり、外部からはこのルートを通じてのみアクセスします。
 
@@ -214,20 +315,62 @@ DDDでは、関連するエンティティと値オブジェクトを**集約**�
 **含まれるオブジェクト:**
 - User（エンティティ）
 - Role（値オブジェクト）
+- UserStatus（値オブジェクト）
+- InvitationToken（値オブジェクト）
 
 **責務:**
-- ユーザーの認証・認可
-- ユーザー情報の管理
+- ユーザーの識別情報と認証情報の管理
+- ユーザーのライフサイクル管理(招待 → アクティベーション → アクティブ)
+- パスワードの変更とリセット
+- 役割の管理
 - ロールに基づく権限チェック
 
 **不変条件:**
 - メールアドレスは一意
 - ロールは1つのみ
 - 無効化されたユーザーはログイン不可
+- アクティブなユーザーは必ずパスワードハッシュを持つ
+- 招待済みユーザーは招待トークンを持つ
+- 招待トークンの有効期限は48時間
+
+**ドメインイベント:**
+- `UserInvited`: ユーザーが招待された
+- `UserActivated`: ユーザーがアクティベートされた
+- `PasswordChanged`: パスワードが変更された
+- `PasswordResetRequested`: パスワードリセットが要求された
+- `PasswordReset`: パスワードがリセットされた
+- `UserDeactivated`: ユーザーが無効化された
+- `UserReactivated`: ユーザーが再有効化された
 
 ---
 
-### 2. 予約集約 (Reservation Aggregate)
+### 2. セッション集約 (Session Aggregate)
+
+**集約ルート:** `Session`
+
+**含まれるオブジェクト:**
+- Session（エンティティ）
+- AccessToken（値オブジェクト）
+- RefreshToken（値オブジェクト）
+
+**責務:**
+- セッションの作成と管理
+- トークンの発行と検証
+- セッションの無効化
+
+**不変条件:**
+- アクセストークンの有効期限は15分
+- リフレッシュトークンの有効期限は7日
+- 無効化されたセッションは再利用できない
+
+**ドメインイベント:**
+- `SessionCreated`: セッションが作成された
+- `AccessTokenRefreshed`: アクセストークンが更新された
+- `SessionRevoked`: セッションが無効化された
+
+---
+
+### 3. 予約集約 (Reservation Aggregate)
 
 **集約ルート:** `Reservation`
 
@@ -250,7 +393,7 @@ DDDでは、関連するエンティティと値オブジェクトを**集約**�
 
 ---
 
-### 3. 注文集約 (Order Aggregate)
+### 4. 注文集約 (Order Aggregate)
 
 **集約ルート:** `Order`
 
@@ -271,7 +414,7 @@ DDDでは、関連するエンティティと値オブジェクトを**集約**�
 
 ---
 
-### 4. チケット集約 (Ticket Aggregate)
+### 5. チケット集約 (Ticket Aggregate)
 
 **集約ルート:** `Ticket`
 
@@ -294,7 +437,7 @@ DDDでは、関連するエンティティと値オブジェクトを**集約**�
 
 ---
 
-### 5. ゲスト集約 (Guest Aggregate)
+### 6. ゲスト集約 (Guest Aggregate)
 
 **集約ルート:** `Guest`
 
@@ -311,18 +454,20 @@ DDDでは、関連するエンティティと値オブジェクトを**集約**�
 
 ---
 
-## 🔗 集約間の関係
+## 集約間の関係
 
 ### 参照の方向
 
 ```mermaid
 graph LR
     User[ユーザー集約]
+    Session[セッション集約]
     Reservation[予約集約]
     Order[注文集約]
     Ticket[チケット集約]
     Guest[ゲスト集約]
 
+    Session -->|userId| User
     User -->|userId| Reservation
     User -->|userId| Ticket
     User -->|staffId| Guest
@@ -338,10 +483,11 @@ graph LR
 
 ---
 
-## 📝 エンティティ vs 値オブジェクト
+## エンティティ vs 値オブジェクト
 
 ### エンティティ（Identity を持つ）
 - **User**: ユーザーID で識別
+- **Session**: セッションID で識別
 - **Reservation**: 予約ID で識別
 - **Order**: 注文ID で識別
 - **Ticket**: チケットID で識別
@@ -351,6 +497,7 @@ graph LR
 
 #### 列挙型
 - **Role**: 列挙型（GENERAL_USER, STAFF, ADMINISTRATOR）
+- **UserStatus**: 列挙型（INVITED, ACTIVE, DEACTIVATED）
 - **PaymentMethod**: 列挙型（CASH, TICKET）
 - **ReservationStatus**: 列挙型（CONFIRMED, CANCELLED, FINALIZED）
 - **OrderStatus**: 列挙型（PENDING, PLACED）
@@ -380,15 +527,38 @@ graph LR
   - `isValid()`: 形式チェック
   - `equals()`: 等価性チェック（小文字に正規化して比較）
 
-**Password（パスワード）**
-- **責務**: パスワードのセキュリティ要件とハッシュ化
-- **バリデーション**:
-  - 最小8文字以上
-  - 英数字を含む（推奨）
+**PasswordHash（パスワードハッシュ）**
+- **責務**: ハッシュ化されたパスワードの管理と検証
 - **振る舞い**:
-  - `verify()`: パスワード検証
-  - `meetsRequirements()`: セキュリティ要件チェック
-- **注意**: 値はハッシュ化して保存
+  - `verify(password)`: パスワード検証
+- **注意**: 生のパスワードは保持しない。bcryptでハッシュ化して保存
+
+**InvitationToken（招待トークン）**
+- **責務**: ユーザー招待時のトークン管理
+- **有効期限**: 48時間
+- **振る舞い**:
+  - `isExpired()`: 有効期限切れチェック
+  - `isValid()`: 有効性チェック
+
+**PasswordResetToken（パスワードリセットトークン）**
+- **責務**: パスワードリセット時のトークン管理
+- **有効期限**: 1時間
+- **振る舞い**:
+  - `isExpired()`: 有効期限切れチェック
+  - `isValid()`: 有効性チェック
+
+**AccessToken（アクセストークン）**
+- **責務**: API認証用JWTトークンの管理
+- **有効期限**: 15分
+- **振る舞い**:
+  - `isExpired()`: 有効期限切れチェック
+  - `verify()`: トークン検証
+
+**RefreshToken（リフレッシュトークン）**
+- **責務**: アクセストークン更新用トークンの管理
+- **有効期限**: 7日
+- **振る舞い**:
+  - `isExpired()`: 有効期限切れチェック
 
 **TicketCount（チケット枚数）**
 - **責務**: チケット残り枚数の管理と不変条件の保証
@@ -403,7 +573,7 @@ graph LR
 
 **TicketSetQuantity（チケットセット数）**
 - **責務**: チケット購入時のセット数管理と枚数計算
-- **不変条件**: 
+- **不変条件**:
   - 1セット以上
   - 整数のみ
   - 1セット = 10枚固定
@@ -428,11 +598,41 @@ graph LR
 
 ---
 
-## 🎯 ドメインサービス
+## ドメインサービス
 
 集約に属さないビジネスロジックは**ドメインサービス**として実装します。
 
-### 1. ReservationDeadlineService
+### 1. AuthenticationService
+**責務:** ログイン処理とパスワード検証
+
+```typescript
+class AuthenticationService {
+  login(email: Email, password: Password): Session;
+  verifyPassword(user: User, password: Password): boolean;
+}
+```
+
+### 2. InvitationService
+**責務:** 招待メールとパスワードリセットメールの送信
+
+```typescript
+class InvitationService {
+  sendInvitationEmail(user: User, invitationToken: InvitationToken): void;
+  sendPasswordResetEmail(user: User, resetToken: PasswordResetToken): void;
+}
+```
+
+### 3. RateLimitService
+**責務:** ログイン試行回数の制限（10回/15分）
+
+```typescript
+class RateLimitService {
+  checkLoginAttempts(email: Email): boolean;
+  recordLoginAttempt(email: Email, success: boolean): void;
+}
+```
+
+### 4. ReservationDeadlineService
 **責務:** 締め切り時刻のチェック
 
 ```typescript
@@ -443,7 +643,7 @@ class ReservationDeadlineService {
 }
 ```
 
-### 2. TicketUsageService
+### 5. TicketUsageService
 **責務:** チケットの使用・返却ロジック
 
 ```typescript
@@ -451,14 +651,14 @@ class TicketUsageService {
   useTicket(ticket: Ticket, reservation: Reservation): void {
     // チケットの残り枚数を減らす
   }
-  
+
   restoreTicketCount(ticket: Ticket, reservation: Reservation): void {
     // チケットの残り枚数を増やす（予約キャンセル時など）
   }
 }
 ```
 
-### 3. OrderAggregationService
+### 6. OrderAggregationService
 **責務:** 予約を注文にまとめる
 
 ```typescript
@@ -471,9 +671,89 @@ class OrderAggregationService {
 
 ---
 
-## 🔄 主要なビジネスフロー
+## リポジトリインターフェース
 
-### 1. 弁当予約フロー
+### UserRepository
+```typescript
+interface UserRepository {
+  save(user: User): Promise<void>;
+  findById(userId: UserId): Promise<User | null>;
+  findByEmail(email: Email): Promise<User | null>;
+  findByInvitationToken(token: InvitationToken): Promise<User | null>;
+  existsByEmail(email: Email): Promise<boolean>;
+}
+```
+
+### SessionRepository
+```typescript
+interface SessionRepository {
+  save(session: Session): Promise<void>;
+  findById(sessionId: SessionId): Promise<Session | null>;
+  findByRefreshToken(refreshToken: RefreshToken): Promise<Session | null>;
+  findActiveSessionsByUserId(userId: UserId): Promise<Session[]>;
+  revokeAllByUserId(userId: UserId): Promise<void>;
+}
+```
+
+### PasswordResetTokenRepository
+```typescript
+interface PasswordResetTokenRepository {
+  save(token: PasswordResetToken): Promise<void>;
+  findByToken(token: string): Promise<PasswordResetToken | null>;
+  deleteByUserId(userId: UserId): Promise<void>;
+}
+```
+
+---
+
+## 主要なビジネスフロー
+
+### 1. ユーザー招待・アクティベーションフロー
+
+```mermaid
+sequenceDiagram
+    actor Admin as 管理者
+    participant User
+    participant InvitationService
+    participant Email
+
+    Admin->>User: invite(email, role)
+    User->>User: InvitationToken生成
+    User->>InvitationService: sendInvitationEmail()
+    InvitationService->>Email: 招待メール送信
+
+    Note over User: 48時間以内にアクティベート
+
+    actor NewUser as 新規ユーザー
+    NewUser->>User: activate(password)
+    User->>User: パスワードポリシーチェック
+    User->>User: PasswordHash生成
+    User->>User: status = ACTIVE
+```
+
+### 2. ログインフロー
+
+```mermaid
+sequenceDiagram
+    actor User as ユーザー
+    participant RateLimitService
+    participant AuthService as AuthenticationService
+    participant Session
+
+    User->>RateLimitService: checkLoginAttempts(email)
+    alt 制限超過
+        RateLimitService-->>User: エラー（15分間ロックアウト）
+    else OK
+        User->>AuthService: login(email, password)
+        AuthService->>AuthService: verifyPassword()
+        AuthService->>Session: create(userId)
+        Session->>Session: AccessToken生成
+        Session->>Session: RefreshToken生成
+        Session-->>User: Session返却
+    end
+```
+
+### 3. 弁当予約フロー
 
 ```mermaid
 sequenceDiagram
@@ -484,7 +764,7 @@ sequenceDiagram
 
     User->>DeadlineService: 締め切り前かチェック
     DeadlineService-->>User: OK
-    
+
     alt チケット払い
         User->>Ticket: 残り枚数チェック
         Ticket-->>User: OK (残り枚数 >= 1)
@@ -495,7 +775,7 @@ sequenceDiagram
     end
 ```
 
-### 2. チケット購入 + 弁当予約の同時フロー
+### 4. チケット購入 + 弁当予約の同時フロー
 
 ```mermaid
 sequenceDiagram
@@ -510,7 +790,7 @@ sequenceDiagram
     Reservation->>Ticket: 1枚使用（残り9枚）
 ```
 
-### 3. 注文確定フロー
+### 5. 注文確定フロー
 
 ```mermaid
 sequenceDiagram
@@ -529,19 +809,19 @@ sequenceDiagram
 
 ---
 
-## 📌 まとめ
+## まとめ
 
 このドメインモデルは以下を定義しています：
 
-1. **5つの集約**: User, Reservation, Order, Ticket, Guest
+1. **6つの集約**: User, Session, Reservation, Order, Ticket, Guest
 2. **エンティティと値オブジェクト**の区別
 3. **集約間の関係**（IDによる参照）
 4. **ドメインサービス**（集約に属さないロジック）
-5. **主要なビジネスフロー**
-
-次のステップでは、これらの集約を**境界づけられたコンテキスト**にグループ化します。
+5. **リポジトリインターフェース**
+6. **主要なビジネスフロー**
 
 ---
 
 **更新履歴:**
 - 2025-11-30: 初版作成
+- 2026-02-01: ドキュメント再編成（認証機能ドメインモデルを統合、Session集約追加）
