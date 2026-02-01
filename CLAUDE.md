@@ -75,3 +75,23 @@ docker compose up -d
 - `docs/04-database-design.md` - データベース設計
 - `docs/05-basic-design.md` - 基本設計書（図解、画面遷移）
 - `docs/06-implementation-plan.md` - 統合実装計画（フェーズごとのタスク）
+
+## Git・バージョン管理ルール
+
+### ブランチ戦略
+- **GitHub Flow** を採用（mainブランチからfeatureブランチを作成し、PRでマージ）
+- ブランチ名の例: `feature/login-screen`, `fix/auth-bug`, `refactor/docs-structure`
+
+### コミットメッセージ
+- **言語**: 日本語
+- **形式**: Conventional Commits + Emoji
+  - Format: `<type>: <emoji> <subject>`
+  - Example: `feat: ✨ ログイン画面の実装`
+- **Prefix List**:
+  - `feat`: ✨ 新機能 (Features)
+  - `fix`: 🐛 バグ修正 (Bug Fixes)
+  - `docs`: 📝 ドキュメント (Documentation)
+  - `style`: 💄 コードの意味に影響しない修正 (Styles)
+  - `refactor`: ♻️ リファクタリング (Refactoring)
+  - `test`: ✅ テスト追加・修正 (Tests)
+  - `chore`: 🔧 ビルドツールや設定ファイルの変更 (Chores)
