@@ -70,31 +70,44 @@ docker compose up -d
 - `docs/02-design/architecture.md` - アーキテクチャ設計
 - `docs/02-design/domain-model.md` - ドメインモデル
 - `docs/02-design/ubiquitous-language.md` - ユビキタス言語
-- `docs/02-design/modules/iam-module.md` - IAMモジュール設計（認証・認可）
+- `docs/02-design/modules/iam.md` - IAMモジュール設計（認証・認可）
+- `docs/02-design/ui-design.md` - UI設計（画面遷移）
 - `docs/03-api-design.md` - API設計
+- `docs/03-implementation/authentication-flows.md` - 認証フロー詳細
 - `docs/04-database-design.md` - データベース設計
-- `docs/05-basic-design.md` - 基本設計書（図解、画面遷移）
 - `docs/06-implementation-plan.md` - 統合実装計画（フェーズごとのタスク）
 
-## Git・バージョン管理ルール
+## 開発ガイドライン
+
+本プロジェクトでは `.claude/rules/` の開発ルールに従う：
+
+| ガイドライン | ファイル |
+|-------------|----------|
+| コーディングスタイル | `.claude/rules/coding-style.md` |
+| テスト・TDD | `.claude/rules/testing.md` |
+| セキュリティ | `.claude/rules/security.md` |
+| 共通パターン | `.claude/rules/patterns.md` |
+
+### エージェントの活用
+
+複雑なタスクには適切なエージェントを使用（詳細: `.claude/rules/agents.md`）：
+- 複雑な機能 → **planner**
+- 新機能・バグ修正 → **tdd-guide**
+- コード作成後 → **code-reviewer**
+
+## Git運用
 
 ### ブランチ戦略
-- **GitHub Flow** を採用（mainブランチからfeatureブランチを作成し、PRでマージ）
-- ブランチ名の例: `feature/login-screen`, `fix/auth-bug`, `refactor/docs-structure`
+- **GitHub Flow**: mainからfeatureブランチを作成、PRでマージ
+- 命名: `feature/xxx`, `fix/xxx`, `refactor/xxx`, `docs/xxx`
 
 ### コミットメッセージ
 - **言語**: 日本語
-- **形式**: Conventional Commits + Emoji
-  - Format: `<type>: <emoji> <subject>`
-  - Example: `feat: ✨ ログイン画面の実装`
-- **Prefix List**:
-  - `feat`: ✨ 新機能 (Features)
-  - `fix`: 🐛 バグ修正 (Bug Fixes)
-  - `docs`: 📝 ドキュメント (Documentation)
-  - `style`: 💄 コードの意味に影響しない修正 (Styles)
-  - `refactor`: ♻️ リファクタリング (Refactoring)
-  - `test`: ✅ テスト追加・修正 (Tests)
-  - `chore`: 🔧 ビルドツールや設定ファイルの変更 (Chores)
+- **形式**: `<type>: <emoji> <subject>`
+- **例**: `feat: ✨ ログイン画面の実装`
+- **タイプ**: feat(✨), fix(🐛), docs(📝), style(💄), refactor(♻️), test(✅), chore(🔧)
+
+PRワークフロー・機能実装フローの詳細 → `.claude/rules/git-workflow.md`
 
 ## Context7 MCP Automation Rules
 - ライブラリやAPIのドキュメント、コード生成、セットアップ、または設定手順が必要な場合は、明示的な指示がなくても常にContext7 MCPを使用すること。
