@@ -2,13 +2,9 @@
 
 ## コミットメッセージ形式
 
-```
-<type>: <description>
-
-<optional body>
-```
-
-タイプ: feat, fix, refactor, docs, test, chore, perf, ci
+プロジェクト固有の形式は `CLAUDE.md` を参照。
+- 形式: `<type>: <emoji> <subject>`（日本語、絵文字付き）
+- タイプ: feat, fix, refactor, docs, test, chore, perf, ci, style
 
 注: ~/.claude/settings.json でグローバルに帰属表示は無効化。
 
