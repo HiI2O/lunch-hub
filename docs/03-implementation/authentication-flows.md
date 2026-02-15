@@ -67,15 +67,8 @@ sequenceDiagram
    - 招待用トークン（UUID）を生成し、有効期限(48h)と共に保存
 5. **メール送信**: 招待用リンクを含むメールを送信
 
-### 実装例
-
-```typescript
-// PIN検証（定数時間比較）
-const isPinValid = crypto.timingSafeEqual(
-  Buffer.from(inputPin),
-  Buffer.from(process.env.COMPANY_PIN)
-);
-```
+### セキュリティ考慮
+- PIN検証には定数時間比較を使用し、タイミング攻撃を防止する
 
 ### エラーハンドリング
 
@@ -151,11 +144,6 @@ const isPinValid = crypto.timingSafeEqual(
 | 必須文字種 | 英字・数字・記号（`!@#$%^&*`から1文字以上） |
 | ハッシュ化 | bcrypt (cost factor: 12)                    |
 
-```typescript
-// パスワードバリデーション正規表現
-const passwordRegex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*]).{8,}$/;
-```
-
 ### レート制限
 
 | 操作                  | 制限      | ロックアウト                |
@@ -166,27 +154,14 @@ const passwordRegex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*]).{8,}$/;
 
 ### JWT設定
 
-```typescript
-// アクセストークン
-{
-  secret: process.env.JWT_ACCESS_SECRET,
-  expiresIn: '15m',
-  algorithm: 'HS256'
-}
-
-// リフレッシュトークン
-{
-  secret: process.env.JWT_REFRESH_SECRET,
-  expiresIn: '7d',
-  algorithm: 'HS256'
-}
-```
+| トークン種別 | 有効期限 | アルゴリズム | シークレット |
+| ------------ | -------- | ------------ | ------------ |
+| アクセストークン | 15分 | HS256 | 環境変数 `JWT_ACCESS_SECRET` |
+| リフレッシュトークン | 7日 | HS256 | 環境変数 `JWT_REFRESH_SECRET` |
 
 ### HTTP-only Cookie設定
 
-```typescript
-Set-Cookie: refreshToken=...; HttpOnly; Secure; SameSite=Strict; Max-Age=604800
-```
+リフレッシュトークンは HTTP-only Cookie で管理する。設定: `HttpOnly; Secure; SameSite=Strict; Max-Age=604800`
 
 ---
 

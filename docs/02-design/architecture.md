@@ -128,7 +128,7 @@ graph TB
     IAM[IAM Context<br/>User, Session]
     Reservation[Reservation Context<br/>Reservation, Guest]
     Order[Order Context<br/>Order]
-    Ticket[Ticket Context<br/>Ticket]
+    Ticket[Ticket Context<br/>Ticket, TicketPurchaseReservation]
 
     IAM -->|UserId, Role| Reservation
     IAM -->|UserId, Role| Order

@@ -24,6 +24,7 @@ graph TB
 
     subgraph "Ticket Context"
         Ticket[チケット集約]
+        TicketPurchaseReservation[チケット購入予約集約]
     end
 
     User -->|userId| Reservation
@@ -124,7 +125,7 @@ classDiagram
     class Order {
         +UUID orderId
         +Date orderDate
-        +List~Reservation~ reservations
+        +List~UUID~ reservationIds
         +OrderStatus status
         +Integer totalCount
         +DateTime createdAt
@@ -201,7 +202,7 @@ classDiagram
     class PasswordHash {
         <<value object>>
         +String hashedValue
-        +verify()
+        +equals()
     }
 
     class InvitationToken {
@@ -288,14 +289,15 @@ classDiagram
 
     Reservation "1" --> "1" PaymentMethod : uses
     Reservation "1" --> "1" ReservationStatus : has
-    Reservation "*" --> "1" Order : belongs to
-    Reservation "0..1" --> "1" Ticket : uses (if ticket payment)
+    Reservation "*" ..> "1" Order : references by orderId
+    Reservation "0..1" ..> "1" Ticket : references by ticketId
 
     Order "1" --> "1" OrderStatus : has
     Order "1" --> "1" DeadlineTime : respects
+    Order "1" ..> "*" Reservation : references by reservationIds
 
     Ticket "1" --> "1" TicketStatus : has
-    Ticket "1" <-- "1" TicketPurchaseReservation : creates
+    TicketPurchaseReservation "1" ..> "1" Ticket : references by ticketId
 
     Guest "1" --> "0..*" Reservation : has
 
@@ -420,24 +422,42 @@ DDDでは、関連するエンティティと値オブジェクトを**集約**�
 
 **含まれるオブジェクト:**
 - Ticket（エンティティ）
-- TicketPurchaseReservation（エンティティ）
 - TicketStatus（値オブジェクト）
-- PurchaseStatus（値オブジェクト）
+- TicketCount（値オブジェクト）
 
 **責務:**
-- チケットの購入予約
 - チケットの使用・返却
 - 残り枚数の管理
 
 **不変条件:**
 - チケットの残り枚数は0以上（上限なし）
-- チケット購入予約をすると、即座に「予約中」状態のチケットが作成される
-- 予約中のチケットでも弁当予約に使用可能
-- チケット購入予約をキャンセルした場合、そのチケットで使用した弁当予約も全てキャンセルされる
+- 予約中（PENDING）のチケットでも弁当予約に使用可能
 
 ---
 
-### 6. ゲスト集約 (Guest Aggregate)
+### 6. チケット購入予約集約 (TicketPurchaseReservation Aggregate)
+
+**集約ルート:** `TicketPurchaseReservation`
+
+**含まれるオブジェクト:**
+- TicketPurchaseReservation（エンティティ）
+- PurchaseStatus（値オブジェクト）
+- TicketSetQuantity（値オブジェクト）
+
+**責務:**
+- チケット購入予約の作成・キャンセル
+- 購入セット数の管理
+
+**不変条件:**
+- 購入予約をすると、即座に「予約中」状態のチケットが作成される（結果整合性）
+- 購入予約をキャンセルした場合、関連するチケットで使用した弁当予約も全てキャンセルされる（結果整合性）
+
+**他集約との関係（IDのみ参照）:**
+- ticketId で Ticket集約を参照
+
+---
+
+### 7. ゲスト集約 (Guest Aggregate)
 
 **集約ルート:** `Guest`
 
@@ -465,14 +485,18 @@ graph LR
     Reservation[予約集約]
     Order[注文集約]
     Ticket[チケット集約]
+    TicketPurchase[チケット購入予約集約]
     Guest[ゲスト集約]
 
     Session -->|userId| User
     User -->|userId| Reservation
     User -->|userId| Ticket
+    User -->|userId| TicketPurchase
     User -->|staffId| Guest
     Reservation -->|ticketId| Ticket
     Reservation -->|orderId| Order
+    Order -->|reservationIds| Reservation
+    TicketPurchase -->|ticketId| Ticket
     Guest -->|guestId| Reservation
 ```
 
@@ -491,6 +515,7 @@ graph LR
 - **Reservation**: 予約ID で識別
 - **Order**: 注文ID で識別
 - **Ticket**: チケットID で識別
+- **TicketPurchaseReservation**: 購入予約ID で識別
 - **Guest**: ゲストID で識別
 
 ### 値オブジェクト（値で識別）
@@ -528,10 +553,10 @@ graph LR
   - `equals()`: 等価性チェック（小文字に正規化して比較）
 
 **PasswordHash（パスワードハッシュ）**
-- **責務**: ハッシュ化されたパスワードの管理と検証
+- **責務**: ハッシュ化されたパスワードの保持
 - **振る舞い**:
-  - `verify(password)`: パスワード検証
-- **注意**: 生のパスワードは保持しない。bcryptでハッシュ化して保存
+  - `equals()`: 等価性チェック
+- **注意**: 生のパスワードは保持しない。ハッシュ化・検証はドメイン層の `PasswordHasher` インターフェースを経由し、具体的な実装（bcrypt等）はインフラ層に配置する
 
 **InvitationToken（招待トークン）**
 - **責務**: ユーザー招待時のトークン管理
@@ -603,106 +628,42 @@ graph LR
 集約に属さないビジネスロジックは**ドメインサービス**として実装します。
 
 ### 1. AuthenticationService
-**責務:** ログイン処理とパスワード検証
+**責務:** ログイン処理。PasswordHasher インターフェースを通じてパスワードを検証する。
 
-```typescript
-class AuthenticationService {
-  login(email: Email, password: Password): Session;
-  verifyPassword(user: User, password: Password): boolean;
-}
-```
+### PasswordHasher（インターフェース）
+**責務:** パスワードのハッシュ化と検証のための抽象。ドメイン層にインターフェースを定義し、具体的な実装（bcrypt等）はインフラ層に配置する。
+- `hash(password)`: パスワードをハッシュ化
+- `verify(password, hash)`: パスワードとハッシュの一致を検証
 
 ### 2. InvitationService
 **責務:** 招待メールとパスワードリセットメールの送信
 
-```typescript
-class InvitationService {
-  sendInvitationEmail(user: User, invitationToken: InvitationToken): void;
-  sendPasswordResetEmail(user: User, resetToken: PasswordResetToken): void;
-}
-```
-
 ### 3. RateLimitService
 **責務:** ログイン試行回数の制限（10回/15分）
 
-```typescript
-class RateLimitService {
-  checkLoginAttempts(email: Email): boolean;
-  recordLoginAttempt(email: Email, success: boolean): void;
-}
-```
-
 ### 4. ReservationDeadlineService
-**責務:** 締め切り時刻のチェック
-
-```typescript
-class ReservationDeadlineService {
-  canModifyReservation(reservation: Reservation): boolean {
-    // 当日9:30より前かチェック
-  }
-}
-```
+**責務:** 当日9:30の締め切り時刻チェック。締め切り後の予約作成・変更・キャンセルを拒否する。
 
 ### 5. TicketUsageService
-**責務:** チケットの使用・返却ロジック
-
-```typescript
-class TicketUsageService {
-  useTicket(ticket: Ticket, reservation: Reservation): void {
-    // チケットの残り枚数を減らす
-  }
-
-  restoreTicketCount(ticket: Ticket, reservation: Reservation): void {
-    // チケットの残り枚数を増やす（予約キャンセル時など）
-  }
-}
-```
+**責務:** チケットの使用（予約時に残枚数を減らす）と返却（キャンセル時に残枚数を増やす）
 
 ### 6. OrderAggregationService
-**責務:** 予約を注文にまとめる
-
-```typescript
-class OrderAggregationService {
-  createOrder(reservations: Reservation[], orderDate: Date): Order {
-    // 複数の予約から注文を作成
-  }
-}
-```
+**責務:** 複数の予約を日単位の注文にまとめる
 
 ---
 
 ## リポジトリインターフェース
 
-### UserRepository
-```typescript
-interface UserRepository {
-  save(user: User): Promise<void>;
-  findById(userId: UserId): Promise<User | null>;
-  findByEmail(email: Email): Promise<User | null>;
-  findByInvitationToken(token: InvitationToken): Promise<User | null>;
-  existsByEmail(email: Email): Promise<boolean>;
-}
-```
+各集約に対応するリポジトリインターフェースをドメイン層に定義し、具体的な永続化実装はインフラ層に配置する。
 
-### SessionRepository
-```typescript
-interface SessionRepository {
-  save(session: Session): Promise<void>;
-  findById(sessionId: SessionId): Promise<Session | null>;
-  findByRefreshToken(refreshToken: RefreshToken): Promise<Session | null>;
-  findActiveSessionsByUserId(userId: UserId): Promise<Session[]>;
-  revokeAllByUserId(userId: UserId): Promise<void>;
-}
-```
-
-### PasswordResetTokenRepository
-```typescript
-interface PasswordResetTokenRepository {
-  save(token: PasswordResetToken): Promise<void>;
-  findByToken(token: string): Promise<PasswordResetToken | null>;
-  deleteByUserId(userId: UserId): Promise<void>;
-}
-```
+- **UserRepository**: ユーザーの保存・取得（ID/メール/招待トークンによる検索）
+- **SessionRepository**: セッションの保存・取得・無効化（リフレッシュトークンによる検索含む）
+- **PasswordResetTokenRepository**: パスワードリセットトークンの保存・取得・削除
+- **ReservationRepository**: 予約の保存・取得（日付/ユーザーによる検索）
+- **OrderRepository**: 注文の保存・取得（日付による検索）
+- **TicketRepository**: チケットの保存・取得（所有者による検索）
+- **TicketPurchaseReservationRepository**: チケット購入予約の保存・取得（ユーザー/日付による検索）
+- **GuestRepository**: ゲストの保存・取得（訪問日による検索）
 
 ---
 
@@ -813,7 +774,7 @@ sequenceDiagram
 
 このドメインモデルは以下を定義しています：
 
-1. **6つの集約**: User, Session, Reservation, Order, Ticket, Guest
+1. **7つの集約**: User, Session, Reservation, Order, Ticket, TicketPurchaseReservation, Guest
 2. **エンティティと値オブジェクト**の区別
 3. **集約間の関係**（IDによる参照）
 4. **ドメインサービス**（集約に属さないロジック）

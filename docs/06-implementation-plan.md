@@ -11,10 +11,9 @@ Lunch Hubアプリケーション全体(認証機能 + コア機能)を段階的
 - [ユビキタス言語](./02-design/ubiquitous-language.md)
 - [ドメインモデル](./02-design/domain-model.md)
 - [アーキテクチャ設計](./02-design/architecture.md)
-- [IAMモジュール設計](./02-design/modules/iam-module.md)
+- [IAMモジュール設計](./02-design/modules/iam.md)
 - [API設計](./03-api-design.md)
 - [データベース設計](./04-database-design.md)
-- [基本設計](./05-basic-design.md)
 
 ### 技術スタック確認
 - Backend: NestJS + TypeScript + PostgreSQL + Redis
@@ -54,125 +53,20 @@ Lunch Hubアプリケーション全体(認証機能 + コア機能)を段階的
 
 #### Backend
 
-##### 1. プロジェクトセットアップ
-- [NEW] プロジェクト初期化
-  ```bash
-  nest new lunch-hub-backend
-  ```
-- [NEW] 依存関係インストール
-  - `@nestjs/typeorm`, `typeorm`, `pg`
-  - `@nestjs/jwt`, `@nestjs/passport`, `passport-jwt`
-  - `bcrypt`, `@types/bcrypt`
-  - `ioredis`
-  - `nodemailer`, `@types/nodemailer`
-  - `class-validator`, `class-transformer`
-  - `@nestjs/throttler`
-
-##### 2. 共有カーネル (Shared Kernel)
-- [NEW] `src/shared/domain/base-aggregate.ts`: 集約の基底クラス (version/updated_atを含む)
-- [NEW] `src/shared/domain/base-entity.ts`: エンティティの基底クラス (id/created_atを含む)
-- [NEW] `src/shared/domain/domain-event.ts`: ドメインイベントの基底クラス
-- [NEW] `src/shared/domain/value-objects/user-id.vo.ts`: ユーザーID値オブジェクト
-- [NEW] `src/shared/domain/value-objects/email.vo.ts`: メールアドレス値オブジェクト
-- [NEW] `src/shared/domain/value-objects/display-name.vo.ts`: 表示名値オブジェクト
-
-##### 3. IAM Module - Domain Layer
-- [NEW] User集約
-  - `src/modules/iam/domain/aggregates/user/user.aggregate.ts`
-  - `src/modules/iam/domain/aggregates/user/password.vo.ts`
-  - `src/modules/iam/domain/aggregates/user/role.enum.ts` (ADMINISTRATOR, STAFF, GENERAL_USER)
-  - `src/modules/iam/domain/aggregates/user/user-status.enum.ts` (INVITED, ACTIVE, DEACTIVATED)
-  - `src/modules/iam/domain/aggregates/user/invitation-token.vo.ts`
-
-- [NEW] Session集約
-  - `src/modules/iam/domain/aggregates/session/session.aggregate.ts`
-  - `src/modules/iam/domain/aggregates/session/access-token.vo.ts`
-  - `src/modules/iam/domain/aggregates/session/refresh-token.vo.ts`
-
-- [NEW] ドメインサービス
-  - `src/modules/iam/domain/services/authentication.service.ts`
-  - `src/modules/iam/domain/services/invitation.service.ts`
-
-- [NEW] リポジトリインターフェース
-  - `src/modules/iam/domain/repositories/user.repository.interface.ts`
-  - `src/modules/iam/domain/repositories/session.repository.interface.ts`
-
-##### 4. IAM Module - Application Layer
-- [NEW] ユースケース
-  - `src/modules/iam/application/use-cases/invite-user/invite-user.use-case.ts`
-  - `src/modules/iam/application/use-cases/activate-user/activate-user.use-case.ts`
-  - `src/modules/iam/application/use-cases/login/login.use-case.ts`
-  - `src/modules/iam/application/use-cases/logout/logout.use-case.ts`
-  - `src/modules/iam/application/use-cases/refresh-token/refresh-token.use-case.ts`
-  - `src/modules/iam/application/use-cases/change-password/change-password.use-case.ts`
-
-##### 5. IAM Module - Infrastructure Layer
-- [NEW] TypeORM
-  - `src/modules/iam/infrastructure/persistence/typeorm/entities/user.entity.ts`
-  - `src/modules/iam/infrastructure/persistence/typeorm/repositories/user.repository.impl.ts`
-  - `src/modules/iam/infrastructure/persistence/typeorm/mappers/user.mapper.ts`
-
-- [NEW] Redis
-  - `src/modules/iam/infrastructure/persistence/redis/repositories/session.repository.impl.ts`
-
-- [NEW] Email Service
-  - `src/modules/iam/infrastructure/email/email.service.ts`
-  - `src/modules/iam/infrastructure/email/templates/invitation.template.ts`
-
-- [NEW] JWT Service
-  - `src/modules/iam/infrastructure/jwt/jwt.service.ts`
-
-##### 6. IAM Module - Presentation Layer
-- [NEW] Controllers
-  - `src/modules/iam/presentation/controllers/auth.controller.ts`
-  - `src/modules/iam/presentation/controllers/user.controller.ts`
-  - `src/modules/iam/presentation/controllers/admin.controller.ts`
-
-- [NEW] Guards & Decorators
-  - `src/modules/iam/presentation/guards/jwt-auth.guard.ts`
-  - `src/modules/iam/presentation/guards/roles.guard.ts`
-  - `src/modules/iam/presentation/decorators/current-user.decorator.ts`
-
-##### 7. Database
-- [NEW] Migrations
-  - `src/database/migrations/XXXXXX-create-users-table.migration.ts`
-
-- [NEW] Seeds
-  - `src/database/seeds/initial-admin.seed.ts`
-
-##### 8. Configuration
-- [NEW] `.env.example`
-- [MODIFY] `src/app.module.ts`: IAMモジュールのインポート
-
----
+- プロジェクトセットアップ（NestJS初期化、依存関係インストール）
+- 共有カーネル（集約/エンティティ基底クラス、共有値オブジェクト）
+- IAM Module - Domain Layer（User集約、Session集約、ドメインサービス、リポジトリIF）
+- IAM Module - Application Layer（ユースケース: 招待、アクティベーション、ログイン/ログアウト、パスワード管理、役割変更、強制ログアウト）
+- IAM Module - Infrastructure Layer（TypeORM永続化、Redis セッション、メール送信、JWT）
+- IAM Module - Presentation Layer（コントローラー、認証ガード、ロールガード）
+- Database（マイグレーション、初期管理者シード）
+- 監査ログ基盤（audit_logs テーブル、ログ記録サービス）
 
 #### Frontend
 
-##### 1. プロジェクトセットアップ
-- [NEW] プロジェクト初期化
-  ```bash
-  npm create vite@latest lunch-hub-frontend -- --template react-ts
-  ```
-- [NEW] 依存関係インストール
-  - `react-router-dom`, `axios`, `zustand`, `react-hook-form`, `zod`, `date-fns`
-
-##### 2. 認証機能
-- [NEW] Components
-  - `src/features/auth/components/LoginForm.tsx`
-  - `src/features/auth/components/ActivateAccountForm.tsx`
-  - `src/features/auth/components/ChangePasswordForm.tsx`
-
-- [NEW] Pages
-  - `src/features/auth/pages/LoginPage.tsx`
-  - `src/features/auth/pages/ActivateAccountPage.tsx`
-
-- [NEW] Services & Hooks
-  - `src/features/auth/services/auth.service.ts`
-  - `src/features/auth/hooks/useAuth.ts`
-
-- [NEW] Context & Guards
-  - `src/shared/contexts/AuthContext.tsx`
-  - `src/shared/guards/AuthGuard.tsx`
+- プロジェクトセットアップ（React + Vite初期化、依存関係インストール）
+- 認証機能（ログイン画面、サインアップ画面、アカウント有効化画面、パスワード変更）
+- 認証基盤（認証コンテキスト、認証ガード、トークン管理）
 
 ---
 
@@ -182,26 +76,14 @@ Lunch Hubアプリケーション全体(認証機能 + コア機能)を段階的
 
 #### Backend
 
-##### 1. Reservation Module - Domain Layer
-- [NEW] Reservation集約
-- [NEW] Guest集約
-- [NEW] ドメインサービス
-
-##### 2. Reservation Module - Application Layer
-- [NEW] ユースケース
-
-##### 3. Reservation Module - Infrastructure & Presentation
-- [NEW] TypeORM, Controllers
-
-##### 4. Database
-- [NEW] Migrations
-
----
+- Reservation Module（Domain / Application / Infrastructure / Presentation 各層）
+- Guest集約とゲスト予約機能
+- 予約締め切りのドメインルール（当日9:30自動制御）
 
 #### Frontend
 
-##### 1. 予約機能
-- [NEW] Components, Pages, Services
+- 予約カレンダー画面、予約履歴画面
+- ゲスト予約画面（係・管理者）
 
 ---
 
@@ -210,10 +92,15 @@ Lunch Hubアプリケーション全体(認証機能 + コア機能)を段階的
 **目標**: チケット管理と注文管理機能
 
 #### Backend
-- [NEW] Ticket Module, Order Module
+
+- Ticket Module（チケット購入予約、残高管理、受取確認）
+- Order Module（注文集計、手動発注）
+- チケット購入と弁当予約の同時作成
 
 #### Frontend
-- [NEW] チケット機能, 注文機能(係・管理者)
+
+- チケット管理画面
+- 注文管理画面（係・管理者）
 
 ---
 
@@ -222,10 +109,14 @@ Lunch Hubアプリケーション全体(認証機能 + コア機能)を段階的
 **目標**: 管理画面の充実、UX改善
 
 #### Backend
-- [NEW] ユーザー管理機能の拡充、レポート機能、監査ログ
+
+- ユーザー管理機能の拡充（役割変更、強制ログアウト）
+- 監査ログの定期削除バッチ
 
 #### Frontend
-- [NEW] 管理ダッシュボード、ユーザー管理画面、レポート画面、UI/UXの改善
+
+- ユーザー管理画面
+- UI/UXの改善
 
 ---
 
@@ -242,4 +133,3 @@ Lunch Hubアプリケーション全体(認証機能 + コア機能)を段階的
 2. テスト駆動開発(TDD)
 3. コミット粒度を意識
 4. コードレビュー
-
