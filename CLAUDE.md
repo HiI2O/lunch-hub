@@ -71,6 +71,9 @@ docker compose up -d
 - `docs/02-design/domain-model.md` - ドメインモデル
 - `docs/02-design/ubiquitous-language.md` - ユビキタス言語
 - `docs/02-design/modules/iam.md` - IAMモジュール設計（認証・認可）
+- `docs/02-design/modules/reservation.md` - Reservationモジュール設計（予約・ゲスト）
+- `docs/02-design/modules/order.md` - Orderモジュール設計（注文管理）
+- `docs/02-design/modules/ticket.md` - Ticketモジュール設計（チケット管理）
 - `docs/02-design/ui-design.md` - UI設計（画面遷移）
 - `docs/03-api-design.md` - API設計
 - `docs/03-implementation/authentication-flows.md` - 認証フロー詳細
