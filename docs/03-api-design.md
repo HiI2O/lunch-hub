@@ -226,29 +226,6 @@ POST /api/auth/reset-password
 
 ---
 
-### 現在のユーザー情報取得
-```
-GET /api/auth/me
-Authorization: Bearer <accessToken>
-```
-
-**レスポンス:**
-```json
-{
-  "data": {
-    "id": "uuid",
-    "email": "user@company.com",
-    "displayName": "田中太郎",
-    "role": "GENERAL_USER",
-    "status": "ACTIVE",
-    "createdAt": "2025-12-01T00:00:00Z",
-    "lastLoginAt": "2025-12-02T13:00:00Z"
-  }
-}
-```
-
----
-
 ## ユーザー管理 API
 
 ### プロフィール取得
@@ -264,7 +241,10 @@ Authorization: Bearer <accessToken>
     "id": "uuid",
     "email": "user@company.com",
     "displayName": "田中太郎",
-    "role": "GENERAL_USER"
+    "role": "GENERAL_USER",
+    "status": "ACTIVE",
+    "createdAt": "2025-12-01T00:00:00Z",
+    "lastLoginAt": "2025-12-02T13:00:00Z"
   }
 }
 ```
@@ -465,7 +445,55 @@ Roles: ADMINISTRATOR
 
 ---
 
+### ユーザー役割変更
+```
+PUT /api/admin/users/:id/role
+Authorization: Bearer <accessToken>
+Roles: ADMINISTRATOR
+```
+
+**リクエスト:**
+```json
+{
+  "role": "STAFF"
+}
+```
+
+**レスポンス:**
+```json
+{
+  "data": {
+    "id": "uuid",
+    "role": "STAFF"
+  }
+}
+```
+
+---
+
+### ユーザー強制ログアウト
+```
+POST /api/admin/users/:id/force-logout
+Authorization: Bearer <accessToken>
+Roles: ADMINISTRATOR
+```
+
+対象ユーザーの全セッションを無効化する。
+
+**レスポンス:**
+```json
+{
+  "data": {
+    "message": "全セッションを無効化しました"
+  }
+}
+```
+
+---
+
 ## 予約管理 API
+
+> **予約締め切りについて**: 当日9:30以降の予約作成・変更・キャンセルはドメインルールにより自動的に拒否される（`RESERVATION_DEADLINE_PASSED` エラー）。スケジューラー等は不要。
 
 ### 自分の予約一覧取得
 ```
@@ -521,6 +549,51 @@ Authorization: Bearer <accessToken>
     "status": "CONFIRMED",
     "ticketId": "uuid",
     "createdAt": "2025-12-01T10:00:00Z"
+  }
+}
+```
+
+---
+
+### チケット購入と弁当予約の同時作成
+```
+POST /api/reservations/with-ticket-purchase
+Authorization: Bearer <accessToken>
+```
+
+チケット購入予約と弁当予約を1つの操作で同時に作成する。チケット購入予約 → チケット作成（残高10） → 弁当予約（残高9）の順で処理される。
+
+**リクエスト:**
+```json
+{
+  "reservationDate": "2025-12-03",
+  "ticketQuantity": 1,
+  "purchaseDate": "2025-12-03"
+}
+```
+
+**レスポンス:**
+```json
+{
+  "data": {
+    "reservation": {
+      "id": "uuid",
+      "reservationDate": "2025-12-03",
+      "paymentMethod": "TICKET",
+      "status": "CONFIRMED",
+      "ticketId": "uuid"
+    },
+    "purchaseReservation": {
+      "id": "uuid",
+      "quantity": 1,
+      "status": "PENDING",
+      "purchaseDate": "2025-12-03"
+    },
+    "ticket": {
+      "id": "uuid",
+      "remainingCount": 9,
+      "status": "PENDING"
+    }
   }
 }
 ```
@@ -620,6 +693,8 @@ Authorization: Bearer <accessToken>
 
 ## 係専用 - 予約管理 API
 
+> **予約締め切りについて**: 当日9:30以降の予約作成・変更・キャンセルはドメインルールにより自動的に拒否される（`RESERVATION_DEADLINE_PASSED` エラー）。スケジューラー等は不要。
+
 ### 全予約一覧取得
 ```
 GET /api/staff/reservations
@@ -657,6 +732,57 @@ Roles: STAFF, ADMINISTRATOR
 
 ---
 
+### 他ユーザーの予約変更
+```
+PUT /api/staff/reservations/:id
+Authorization: Bearer <accessToken>
+Roles: STAFF, ADMINISTRATOR
+```
+
+係が他ユーザーの予約を変更する。締め切り前のみ変更可能。
+
+**リクエスト:**
+```json
+{
+  "paymentMethod": "CASH"
+}
+```
+
+**レスポンス:**
+```json
+{
+  "data": {
+    "id": "uuid",
+    "reservationDate": "2025-12-03",
+    "paymentMethod": "CASH",
+    "status": "CONFIRMED"
+  }
+}
+```
+
+---
+
+### 他ユーザーの予約キャンセル
+```
+DELETE /api/staff/reservations/:id
+Authorization: Bearer <accessToken>
+Roles: STAFF, ADMINISTRATOR
+```
+
+係が他ユーザーの予約をキャンセルする。締め切り前のみキャンセル可能。
+
+**レスポンス:**
+```json
+{
+  "data": {
+    "id": "uuid",
+    "status": "CANCELLED"
+  }
+}
+```
+
+---
+
 ### ゲスト作成
 ```
 POST /api/staff/guests
@@ -664,11 +790,12 @@ Authorization: Bearer <accessToken>
 Roles: STAFF, ADMINISTRATOR
 ```
 
+ゲスト名のみ入力。訪問日はゲスト予約作成時に予約日から自動設定される。
+
 **リクエスト:**
 ```json
 {
-  "guestName": "来客A様",
-  "visitDate": "2025-12-03"
+  "guestName": "来客A様"
 }
 ```
 
@@ -678,7 +805,6 @@ Roles: STAFF, ADMINISTRATOR
   "data": {
     "id": "uuid",
     "guestName": "来客A様",
-    "visitDate": "2025-12-03",
     "createdAt": "2025-12-01T10:00:00Z"
   }
 }
@@ -692,6 +818,8 @@ POST /api/staff/reservations/guest
 Authorization: Bearer <accessToken>
 Roles: STAFF, ADMINISTRATOR
 ```
+
+ゲストの弁当予約を作成する。支払い方法は現金固定。ゲストの訪問日は予約日から自動設定される。
 
 **リクエスト:**
 ```json
@@ -922,5 +1050,5 @@ Authorization: Bearer <accessToken>
 
 - [アーキテクチャ設計](./02-design/architecture.md)
 - [データベース設計](./04-database-design.md)
-- [IAMモジュール設計](./02-design/modules/iam-module.md)
+- [IAMモジュール設計](./02-design/modules/iam.md)
 

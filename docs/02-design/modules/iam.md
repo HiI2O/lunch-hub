@@ -22,54 +22,30 @@ Identity and Access Management (IAM) モジュールは、Lunch Hubアプリケ�
 - パスワードの変更とリセット
 - 役割の管理
 
-**エンティティ:**
-```typescript
-class User {
-  // 識別子
-  private readonly userId: UserId;
+**エンティティ: User**
 
-  // 基本情報
-  private email: EmailAddress;
-  private displayName: DisplayName;
-  private status: UserStatus; // INVITED, ACTIVE, DEACTIVATED
+属性:
+- userId (識別子)
+- email, displayName, status (基本情報)
+- passwordHash, role (認証情報)
+- invitationToken, invitedAt, invitedBy (招待情報)
+- activatedAt, createdAt, updatedAt, lastLoginAt (タイムスタンプ)
 
-  // 認証情報
-  private passwordHash: PasswordHash;
-  private role: Role; // GENERAL_USER, STAFF, ADMINISTRATOR
+ファクトリメソッド:
+- `invite()`: 管理者によるユーザー招待
+- `selfSignUp()`: セルフサインアップ
 
-  // 招待情報
-  private invitationToken?: InvitationToken;
-  private invitedAt?: Date;
-  private invitedBy?: UserId;
+コマンド:
+- `activate()`: アカウント有効化
+- `changePassword()`: パスワード変更
+- `initiatePasswordReset()`: パスワードリセット要求
+- `resetPassword()`: パスワードリセット実行
+- `changeRole()`: 役割変更
+- `deactivate()` / `reactivate()`: 無効化・再有効化
+- `updateLastLogin()`: 最終ログイン更新
 
-  // アクティベーション情報
-  private activatedAt?: Date;
-
-  // タイムスタンプ
-  private createdAt: Date;
-  private updatedAt: Date;
-  private lastLoginAt?: Date;
-
-  // ファクトリメソッド
-  static invite(email: EmailAddress, role: Role, invitedBy: UserId): User;
-  static selfSignUp(email: EmailAddress): User;
-
-  // コマンド
-  activate(password: Password, displayName: DisplayName): void;
-  changePassword(currentPassword: Password, newPassword: Password): void;
-  initiatePasswordReset(): PasswordResetToken;
-  resetPassword(token: PasswordResetToken, newPassword: Password): void;
-  deactivate(): void;
-  reactivate(): void;
-  updateLastLogin(): void;
-
-  // クエリ
-  isActive(): boolean;
-  isInvited(): boolean;
-  hasRole(role: Role): boolean;
-  canLogin(): boolean;
-}
-```
+クエリ:
+- `isActive()`, `isInvited()`, `hasRole()`, `canLogin()`
 
 **値オブジェクト:**
 
@@ -110,39 +86,23 @@ class User {
 - トークンの発行と検証
 - セッションの無効化
 
-**エンティティ:**
-```typescript
-class Session {
-  // 識別子
-  private readonly sessionId: SessionId;
+**エンティティ: Session**
 
-  // ユーザー情報
-  private readonly userId: UserId;
+属性:
+- sessionId (識別子)
+- userId, accessToken, refreshToken
+- isRevoked, createdAt, lastAccessedAt
 
-  // トークン
-  private accessToken: AccessToken;
-  private refreshToken: RefreshToken;
+ファクトリメソッド:
+- `create()`: セッション作成
 
-  // セッション状態
-  private isRevoked: boolean;
+コマンド:
+- `refreshAccessToken()`: アクセストークン更新
+- `revoke()`: セッション無効化
+- `updateLastAccessed()`: 最終アクセス更新
 
-  // タイムスタンプ
-  private createdAt: Date;
-  private lastAccessedAt: Date;
-
-  // ファクトリメソッド
-  static create(userId: UserId, role: Role): Session;
-
-  // コマンド
-  refreshAccessToken(): AccessToken;
-  revoke(): void;
-  updateLastAccessed(): void;
-
-  // クエリ
-  isValid(): boolean;
-  isExpired(): boolean;
-}
-```
+クエリ:
+- `isValid()`, `isExpired()`
 
 **値オブジェクト:**
 
@@ -166,12 +126,19 @@ class Session {
 ## ドメインサービス
 
 ### AuthenticationService
-ユーザーの認証を担当するドメインサービス。
+ユーザーの認証を担当するドメインサービス。PasswordHasher インターフェースを通じてパスワードを検証する。
 
 **責務:**
-- パスワードの検証
+- PasswordHasher 経由でのパスワード検証
 - セッションの作成
 - トークンの生成
+
+### PasswordHasher（インターフェース）
+パスワードのハッシュ化・検証の抽象。ドメイン層にインターフェースを定義し、具体的な実装（bcrypt等）はインフラ層に配置する。
+
+**責務:**
+- パスワードのハッシュ化
+- パスワードとハッシュの一致検証
 
 ### InvitationService
 ユーザー招待を担当するドメインサービス。
@@ -185,26 +152,12 @@ class Session {
 ## リポジトリインターフェース
 
 ### UserRepository
-```typescript
-interface UserRepository {
-  findById(userId: UserId): Promise<User | null>;
-  findByEmail(email: EmailAddress): Promise<User | null>;
-  findByInvitationToken(token: InvitationToken): Promise<User | null>;
-  save(user: User): Promise<void>;
-  delete(userId: UserId): Promise<void>;
-}
-```
+- ユーザーの保存・取得（ID/メール/招待トークンによる検索）
+- メールアドレスの存在チェック
 
 ### SessionRepository
-```typescript
-interface SessionRepository {
-  findById(sessionId: SessionId): Promise<Session | null>;
-  findByUserId(userId: UserId): Promise<Session[]>;
-  save(session: Session): Promise<void>;
-  delete(sessionId: SessionId): Promise<void>;
-  revokeAllByUserId(userId: UserId): Promise<void>;
-}
-```
+- セッションの保存・取得（ID/リフレッシュトークン/ユーザーIDによる検索）
+- ユーザーの全セッション無効化（強制ログアウト用）
 
 ---
 
@@ -234,9 +187,11 @@ interface SessionRepository {
 | `ResetPasswordUseCase`        | パスワードリセット実行 | 未認証   |
 
 ### ユーザー管理
-| ユースケース            | 説明             | アクター      |
-| ----------------------- | ---------------- | ------------- |
-| `DeactivateUserUseCase` | ユーザー無効化   | ADMINISTRATOR |
-| `ReactivateUserUseCase` | ユーザー再有効化 | ADMINISTRATOR |
-| `GetUserProfileUseCase` | プロフィール取得 | 認証済み      |
+| ユースケース            | 説明                     | アクター      |
+| ----------------------- | ------------------------ | ------------- |
+| `ChangeRoleUseCase`     | ユーザー役割変更         | ADMINISTRATOR |
+| `DeactivateUserUseCase` | ユーザー無効化           | ADMINISTRATOR |
+| `ReactivateUserUseCase` | ユーザー再有効化         | ADMINISTRATOR |
+| `ForceLogoutUseCase`    | ユーザー強制ログアウト   | ADMINISTRATOR |
+| `GetUserProfileUseCase` | プロフィール取得         | 認証済み      |
 
