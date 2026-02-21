@@ -36,6 +36,7 @@ Thumbs.db
 # AI tools internal
 .agent/
 .claude/settings.local.json
+.mcp.json
 *.swp
 *.swo
 *~
