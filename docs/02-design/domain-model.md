@@ -324,6 +324,8 @@ DDDでは、関連するエンティティと値オブジェクトを**集約**�
 
 ### 3. 予約集約 (Reservation Aggregate)
 
+> **設計上の注意:** 本システムで注文できる弁当は「日替わり弁当」の1種類のみであるため、Reservation集約にはメニュー選択や数量の属性を持たない。予約1件 = 日替わり弁当1個 として扱う。
+
 → 詳細は [Reservationモジュール設計書](modules/reservation.md#1-reservation集約) を参照
 
 ---
