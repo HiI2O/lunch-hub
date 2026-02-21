@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom';
-import { Sidebar } from './Sidebar';
 import { Header } from './Header';
+import { Sidebar } from './Sidebar';
+import { BottomNav } from './BottomNav';
 
 interface MainLayoutProps {
   pageTitle: string;
@@ -22,6 +23,7 @@ export function MainLayout({ pageTitle }: MainLayoutProps) {
           <Outlet />
         </main>
       </div>
+      <BottomNav />
     </div>
   );
 }

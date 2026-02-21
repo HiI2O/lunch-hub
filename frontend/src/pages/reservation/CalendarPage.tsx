@@ -70,8 +70,8 @@ export function CalendarPage() {
                 <div className="calendar-day-number">{date.getDate()}</div>
                 <div className="calendar-day-content">
                   {reservation && (
-                    <span className={`reservation-badge ${reservation.status}`}>
-                      {reservation.status === 'confirmed' ? '予約済' : 'キャンセル'}
+                    <span className={`reservation-badge ${reservation.status}`} title={reservation.status === 'confirmed' ? '予約済' : 'キャンセル'}>
+                      {reservation.status === 'confirmed' ? '✓' : '×'}
                     </span>
                   )}
                 </div>
@@ -82,14 +82,19 @@ export function CalendarPage() {
       </div>
 
       <div className="card mt-2">
-        <h3 className="card-title">予約方法</h3>
-        <p className="text-secondary text-sm">
-          カレンダーの日付をクリックすると、その日の弁当を予約できます。<br />
-          締め切りは当日の午前9:30です。
+        <h3 className="card-title">予約の見方</h3>
+        <p className="text-secondary text-sm text-center mb-2">
+          日付をタップすると詳細・予約変更ができます。
         </p>
-        <div className="mt-2 flex gap-2">
-          <span className="reservation-badge confirmed">予約済</span>
-          <span className="reservation-badge cancelled">キャンセル</span>
+        <div className="flex justify-center align-center gap-4">
+          <div className="flex align-center gap-2">
+            <span className="reservation-badge confirmed">✓</span>
+            <span className="text-sm font-bold">予約済</span>
+          </div>
+          <div className="flex align-center gap-2">
+            <span className="reservation-badge cancelled">×</span>
+            <span className="text-sm font-bold">キャンセル</span>
+          </div>
         </div>
       </div>
     </div>
