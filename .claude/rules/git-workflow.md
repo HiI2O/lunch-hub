@@ -1,10 +1,14 @@
 # Git ワークフロー
 
-## コミットメッセージ形式
+## ブランチ戦略
+- **GitHub Flow**: mainからfeatureブランチを作成、PRでマージ
+- 命名: `feature/xxx`, `fix/xxx`, `refactor/xxx`, `docs/xxx`
 
-プロジェクト固有の形式は `CLAUDE.md` を参照。
-- 形式: `<type>: <emoji> <subject>`（日本語、絵文字付き）
-- タイプ: feat, fix, refactor, docs, test, chore, perf, ci, style
+## コミットメッセージ
+- **言語**: 日本語
+- **形式**: `<type>: <emoji> <subject>`
+- **例**: `feat: ✨ ログイン画面の実装`
+- **タイプ**: feat(✨), fix(🐛), docs(📝), style(💄), refactor(♻️), test(✅), chore(🔧)
 
 注: ~/.claude/settings.json でグローバルに帰属表示は無効化。
 
@@ -16,26 +20,3 @@ PR作成時：
 3. 包括的なPRサマリーを作成
 4. TODOを含むテストプランを記載
 5. 新規ブランチの場合は `-u` フラグ付きでプッシュ
-
-## 機能実装ワークフロー
-
-1. **まず計画**
-   - **planner** エージェントで実装計画を作成
-   - 依存関係とリスクを特定
-   - フェーズに分解
-
-2. **TDDアプローチ**
-   - **tdd-guide** エージェントを使用
-   - まずテストを書く（RED）
-   - テストをパスする実装（GREEN）
-   - リファクタリング（IMPROVE）
-   - 80%以上のカバレッジを確認
-
-3. **コードレビュー**
-   - コード作成直後に **code-reviewer** エージェントを使用
-   - CRITICALとHIGHの問題に対処
-   - 可能な限りMEDIUMの問題も修正
-
-4. **コミット & プッシュ**
-   - 詳細なコミットメッセージ
-   - Conventional Commits形式に従う
