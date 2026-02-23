@@ -6,4 +6,5 @@ export abstract class IUserRepository {
   abstract findByEmail(email: string): Promise<User | null>;
   abstract findByInvitationToken(token: string): Promise<User | null>;
   abstract existsByEmail(email: string): Promise<boolean>;
+  abstract findAll(): Promise<User[]>;
 }
