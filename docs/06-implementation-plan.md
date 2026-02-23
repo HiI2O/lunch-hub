@@ -39,11 +39,10 @@ Lunch Hubアプリケーション全体(認証機能 + コア機能)を段階的
 >
 > 実装開始前に以下の準備が必要です:
 > - Node.js 18.x以上のインストール
-> - PostgreSQL 15.xのインストール(またはDocker)
-> - Redis 7.xのインストール(またはDocker)
-> - Gmailアカウント(開発用メール送信)
+> - Docker Compose（PostgreSQL, Redis, MailHog）
+> - `backend/.env.example` をコピーして `backend/.env` を作成
 >
-> Docker Composeを使用する場合は、Dockerのみで構いません。
+> 開発用メール確認には MailHog（`http://localhost:8025`）を使用します。
 
 ## 実装フェーズ
 
@@ -63,6 +62,8 @@ Lunch Hubアプリケーション全体(認証機能 + コア機能)を段階的
 - 監査ログ基盤（audit_logs テーブル、ログ記録サービス）
 
 #### Frontend
+
+> **Note**: フロントエンドの詳細設計（コンポーネント構成、状態管理方針、UIライブラリ選定）は Phase 1 バックエンド完了後に作成する。バックエンドAPIが確定してから設計することで、手戻りを防ぐ。
 
 - プロジェクトセットアップ（React + Vite初期化、依存関係インストール）
 - 認証機能（ログイン画面、サインアップ画面、アカウント有効化画面、パスワード変更）
