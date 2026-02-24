@@ -25,6 +25,7 @@ describe('InviteUserUseCase', () => {
       findByEmail: jest.fn(),
       findByInvitationToken: jest.fn(),
       existsByEmail: jest.fn().mockResolvedValue(false),
+      findAll: jest.fn(),
     };
 
     emailService = {

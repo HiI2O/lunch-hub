@@ -25,7 +25,8 @@ describe('ValueObject', () => {
   it('should freeze props on creation', () => {
     const vo = new TestValueObject({ name: 'test', age: 25 });
     expect(() => {
-      (vo as unknown as { props: TestProps }).props.name = 'changed';
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      (vo as any).props.name = 'changed';
     }).toThrow();
   });
 

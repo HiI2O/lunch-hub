@@ -67,6 +67,7 @@ describe('LoginUseCase', () => {
       findByEmail: jest.fn(),
       findByInvitationToken: jest.fn(),
       existsByEmail: jest.fn(),
+      findAll: jest.fn(),
     };
 
     sessionRepository = {

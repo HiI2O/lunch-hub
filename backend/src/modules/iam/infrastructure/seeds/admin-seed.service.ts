@@ -41,7 +41,7 @@ export class AdminSeedService implements OnApplicationBootstrap {
       id: UniqueId.create().value,
       email: EmailAddress.create(email),
       role: Role.create('ADMINISTRATOR'),
-      invitedBy: 'system',
+      invitedBy: null,
     });
 
     const hashedPassword = await this.passwordHasher.hash(password);

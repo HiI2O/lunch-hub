@@ -24,7 +24,7 @@ describe('JwtTokenService', () => {
         if (key === 'jwt.refreshSecret') return refreshSecret;
         return undefined;
       }),
-    };
+    } as unknown as jest.Mocked<Pick<ConfigService, 'get'>>;
 
     service = new JwtTokenService(
       mockJwtService as unknown as JwtService,
