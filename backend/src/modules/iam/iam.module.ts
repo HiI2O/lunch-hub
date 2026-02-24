@@ -59,6 +59,9 @@ import { GetUserListUseCase } from './application/use-cases/get-user-list.use-ca
 import { ResendInvitationUseCase } from './application/use-cases/resend-invitation.use-case.js';
 import { CancelInvitationUseCase } from './application/use-cases/cancel-invitation.use-case.js';
 
+// Seeds
+import { AdminSeedService } from './infrastructure/seeds/admin-seed.service.js';
+
 // Presentation
 import { AuthController } from './presentation/controllers/auth.controller.js';
 import { UserController } from './presentation/controllers/user.controller.js';
@@ -323,6 +326,9 @@ import { RolesGuard } from './presentation/guards/roles.guard.js';
 
     // Audit
     AuditLogService,
+
+    // Seeds
+    AdminSeedService,
   ],
   exports: [IUserRepository],
 })
