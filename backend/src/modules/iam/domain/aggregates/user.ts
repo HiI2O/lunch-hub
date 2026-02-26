@@ -32,7 +32,7 @@ interface InviteParams {
   readonly id: string;
   readonly email: EmailAddress;
   readonly role: Role;
-  readonly invitedBy: string;
+  readonly invitedBy: string | null;
 }
 
 interface SelfSignUpParams {
