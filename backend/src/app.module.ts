@@ -12,6 +12,7 @@ import {
 } from './config/index.js';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
+import { IamModule } from './modules/iam/iam.module.js';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { AppService } from './app.service.js';
       }),
     }),
     EventEmitterModule.forRoot(),
+    IamModule,
   ],
   controllers: [AppController],
   providers: [AppService],
