@@ -13,6 +13,7 @@ import {
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { IamModule } from './modules/iam/iam.module.js';
+import { ReservationModule } from './modules/reservation/reservation.module.js';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { IamModule } from './modules/iam/iam.module.js';
     }),
     EventEmitterModule.forRoot(),
     IamModule,
+    ReservationModule,
   ],
   controllers: [AppController],
   providers: [AppService],
