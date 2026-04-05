@@ -1,10 +1,10 @@
 import { NavLink } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
 
-interface SidebarProps {
-  userRole: 'ADMINISTRATOR' | 'STAFF' | 'GENERAL_USER';
-}
+export function Sidebar(): React.JSX.Element {
+  const { user } = useAuth();
+  const userRole = user?.role ?? 'GENERAL_USER';
 
-export function Sidebar({ userRole }: SidebarProps) {
   const isStaffOrAdmin = userRole === 'ADMINISTRATOR' || userRole === 'STAFF';
   const isAdmin = userRole === 'ADMINISTRATOR';
 
