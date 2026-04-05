@@ -1,19 +1,50 @@
-export function TicketPage() {
-  // モック用のチケットデータ
-  const mockTickets = [
-    { id: '1', balance: 7, status: 'RECEIVED', purchasedAt: '2026-01-10' },
-    { id: '2', balance: 0, status: 'RECEIVED', purchasedAt: '2025-12-15' },
-  ];
+import { useState, useEffect, useCallback } from 'react';
+import type { TicketApi } from '../../api/ticket';
+import type { TicketResult } from '../../api/types';
 
-  const mockPurchaseHistory = [
-    { id: '1', setCount: 1, status: 'RECEIVED', requestedAt: '2026-01-10 09:00', receivedAt: '2026-01-10 12:30' },
-    { id: '2', setCount: 1, status: 'PENDING', requestedAt: '2026-01-20 10:15', receivedAt: null },
-    { id: '3', setCount: 1, status: 'RECEIVED', requestedAt: '2025-12-15 14:00', receivedAt: '2025-12-15 17:00' },
-  ];
+type TicketPageProps = {
+  readonly ticketApi: TicketApi;
+};
 
-  const totalBalance = mockTickets.reduce((sum, t) => sum + t.balance, 0);
+export function TicketPage({ ticketApi }: TicketPageProps) {
+  const [tickets, setTickets] = useState<TicketResult[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const getStatusBadge = (status: string) => {
+  const loadTickets = useCallback(async (): Promise<void> => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await ticketApi.getMyTickets();
+      setTickets(data);
+    } catch {
+      setError('チケットの読み込みに失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  }, [ticketApi]);
+
+  useEffect(() => {
+    void loadTickets();
+  }, [loadTickets]);
+
+  const totalBalance = tickets.reduce((sum, t) => sum + t.remainingCount, 0);
+  const pendingCount = tickets.filter((t) => t.status === 'PENDING').length;
+
+  const handlePurchase = async (): Promise<void> => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      await ticketApi.createPurchaseReservation({
+        purchaseDate: today,
+        quantity: 1,
+      });
+      await loadTickets();
+    } catch {
+      setError('購入予約に失敗しました');
+    }
+  };
+
+  const getStatusBadge = (status: string): JSX.Element => {
     switch (status) {
       case 'RECEIVED':
         return <span className="badge badge-success">受取済</span>;
@@ -26,6 +57,14 @@ export function TicketPage() {
     }
   };
 
+  if (loading) {
+    return <div>読み込み中...</div>;
+  }
+
+  if (error) {
+    return <div className="text-danger">{error}</div>;
+  }
+
   return (
     <div>
       <div className="stats-grid">
@@ -35,14 +74,16 @@ export function TicketPage() {
         </div>
         <div className="stat-card">
           <div className="stat-label">受取待ち</div>
-          <div className="stat-value warning">1 セット</div>
+          <div className="stat-value warning">{pendingCount} セット</div>
         </div>
       </div>
 
       <div className="card">
         <div className="flex-between mb-2">
           <h3 className="card-title mb-0">チケット購入</h3>
-          <button className="btn btn-primary btn-sm">購入予約する</button>
+          <button className="btn btn-primary btn-sm" onClick={() => void handlePurchase()}>
+            購入予約する
+          </button>
         </div>
         <p className="text-secondary text-sm">
           チケットは10枚1セットで購入できます。<br />
@@ -51,56 +92,22 @@ export function TicketPage() {
       </div>
 
       <div className="card">
-        <h3 className="card-title">購入履歴</h3>
-        <div className="table-container">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>セット数</th>
-                <th>ステータス</th>
-                <th>申請日時</th>
-                <th>受取日時</th>
-                <th>操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              {mockPurchaseHistory.map((item) => (
-                <tr key={item.id}>
-                  <td>{item.setCount} セット（10枚）</td>
-                  <td>{getStatusBadge(item.status)}</td>
-                  <td className="text-secondary text-sm">{item.requestedAt}</td>
-                  <td className="text-secondary text-sm">{item.receivedAt || '-'}</td>
-                  <td>
-                    {item.status === 'PENDING' && (
-                      <button className="btn btn-danger btn-sm">キャンセル</button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div className="card">
         <h3 className="card-title">チケット詳細</h3>
         <div className="table-container">
           <table className="table">
             <thead>
               <tr>
-                <th>チケットID</th>
                 <th>残高</th>
                 <th>ステータス</th>
                 <th>購入日</th>
               </tr>
             </thead>
             <tbody>
-              {mockTickets.map((ticket) => (
+              {tickets.map((ticket) => (
                 <tr key={ticket.id}>
-                  <td className="text-secondary text-sm">#{ticket.id}</td>
-                  <td>{ticket.balance} 枚</td>
+                  <td>{ticket.remainingCount} 枚</td>
                   <td>{getStatusBadge(ticket.status)}</td>
-                  <td className="text-secondary text-sm">{ticket.purchasedAt}</td>
+                  <td className="text-secondary text-sm">{ticket.purchaseDate}</td>
                 </tr>
               ))}
             </tbody>

@@ -2,6 +2,9 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { ApiClient } from '../api/client';
 import { createReservationApi } from '../api/reservation';
 import { createStaffReservationApi } from '../api/staff-reservation';
+import { createTicketApi } from '../api/ticket';
+import { createOrderApi } from '../api/order';
+import { createAdminUserApi } from '../api/admin-user';
 
 // Layouts
 import { AuthLayout } from '../components/layout/AuthLayout';
@@ -37,6 +40,9 @@ const apiClient = new ApiClient({
 });
 const reservationApi = createReservationApi(apiClient);
 const staffReservationApi = createStaffReservationApi(apiClient);
+const ticketApi = createTicketApi(apiClient);
+const orderApi = createOrderApi(apiClient);
+const adminUserApi = createAdminUserApi(apiClient);
 
 export { apiClient };
 
@@ -69,14 +75,14 @@ export const router = createBrowserRouter([
           // 一般ユーザーもアクセス可能
           { path: 'calendar', element: <CalendarPage reservationApi={reservationApi} /> },
           { path: 'history', element: <HistoryPage reservationApi={reservationApi} /> },
-          { path: 'tickets', element: <TicketPage /> },
+          { path: 'tickets', element: <TicketPage ticketApi={ticketApi} /> },
           { path: 'settings/password', element: <ChangePasswordPage /> },
 
           // STAFF + ADMINISTRATOR
           {
             element: <RoleGuard roles={['STAFF', 'ADMINISTRATOR']} />,
             children: [
-              { path: 'admin/orders', element: <OrderPage /> },
+              { path: 'admin/orders', element: <OrderPage orderApi={orderApi} /> },
               { path: 'admin/guest', element: <GuestReservationPage staffReservationApi={staffReservationApi} /> },
             ],
           },
@@ -85,7 +91,7 @@ export const router = createBrowserRouter([
           {
             element: <RoleGuard roles={['ADMINISTRATOR']} />,
             children: [
-              { path: 'admin/users', element: <UserManagementPage /> },
+              { path: 'admin/users', element: <UserManagementPage adminUserApi={adminUserApi} /> },
             ],
           },
         ],

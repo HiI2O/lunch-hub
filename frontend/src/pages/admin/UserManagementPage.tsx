@@ -1,15 +1,78 @@
-export function UserManagementPage() {
-  // モック用のユーザーデータ
-  const mockUsers = [
-    { id: '1', email: 'admin@company.com', displayName: '管理者', role: 'ADMINISTRATOR', status: 'ACTIVE', lastLogin: '2026-01-21 09:00' },
-    { id: '2', email: 'staff@company.com', displayName: '山田 太郎', role: 'STAFF', status: 'ACTIVE', lastLogin: '2026-01-21 08:30' },
-    { id: '3', email: 'user1@company.com', displayName: '佐藤 花子', role: 'GENERAL_USER', status: 'ACTIVE', lastLogin: '2026-01-20 12:00' },
-    { id: '4', email: 'user2@company.com', displayName: '鈴木 一郎', role: 'GENERAL_USER', status: 'ACTIVE', lastLogin: '2026-01-19 15:30' },
-    { id: '5', email: 'invited@company.com', displayName: '-', role: 'GENERAL_USER', status: 'INVITED', lastLogin: '-' },
-    { id: '6', email: 'disabled@company.com', displayName: '退職者', role: 'GENERAL_USER', status: 'DEACTIVATED', lastLogin: '2025-12-01 10:00' },
-  ];
+import { useState, useEffect, useCallback } from 'react';
+import type { AdminUserApi } from '../../api/admin-user';
+import type { AdminUserProfile, UserRole } from '../../api/types';
 
-  const getRoleBadge = (role: string) => {
+type UserManagementPageProps = {
+  readonly adminUserApi: AdminUserApi;
+};
+
+export function UserManagementPage({ adminUserApi }: UserManagementPageProps) {
+  const [users, setUsers] = useState<AdminUserProfile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [inviteEmail, setInviteEmail] = useState('');
+
+  const loadUsers = useCallback(async (): Promise<void> => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await adminUserApi.getUsers();
+      setUsers(data);
+    } catch {
+      setError('ユーザー一覧の読み込みに失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  }, [adminUserApi]);
+
+  useEffect(() => {
+    void loadUsers();
+  }, [loadUsers]);
+
+  const activeCount = users.filter((u) => u.status === 'ACTIVE').length;
+  const invitedCount = users.filter((u) => u.status === 'INVITED').length;
+  const deactivatedCount = users.filter((u) => u.status === 'DEACTIVATED').length;
+
+  const handleInvite = async (e: React.FormEvent): Promise<void> => {
+    e.preventDefault();
+    if (!inviteEmail.trim()) return;
+    try {
+      await adminUserApi.inviteUser(inviteEmail.trim(), 'GENERAL_USER');
+      setInviteEmail('');
+      await loadUsers();
+    } catch {
+      setError('招待の送信に失敗しました');
+    }
+  };
+
+  const handleDeactivate = async (userId: string): Promise<void> => {
+    try {
+      await adminUserApi.deactivateUser(userId);
+      await loadUsers();
+    } catch {
+      setError('無効化に失敗しました');
+    }
+  };
+
+  const handleReactivate = async (userId: string): Promise<void> => {
+    try {
+      await adminUserApi.reactivateUser(userId);
+      await loadUsers();
+    } catch {
+      setError('有効化に失敗しました');
+    }
+  };
+
+  const handleChangeRole = async (userId: string, role: UserRole): Promise<void> => {
+    try {
+      await adminUserApi.changeRole(userId, role);
+      await loadUsers();
+    } catch {
+      setError('ロール変更に失敗しました');
+    }
+  };
+
+  const getRoleBadge = (role: string): JSX.Element => {
     switch (role) {
       case 'ADMINISTRATOR':
         return <span className="badge badge-danger">管理者</span>;
@@ -22,7 +85,7 @@ export function UserManagementPage() {
     }
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string): JSX.Element => {
     switch (status) {
       case 'ACTIVE':
         return <span className="badge badge-success">有効</span>;
@@ -35,20 +98,28 @@ export function UserManagementPage() {
     }
   };
 
+  if (loading) {
+    return <div>読み込み中...</div>;
+  }
+
+  if (error) {
+    return <div className="text-danger">{error}</div>;
+  }
+
   return (
     <div>
       <div className="stats-grid">
         <div className="stat-card">
           <div className="stat-label">アクティブユーザー</div>
-          <div className="stat-value success">4</div>
+          <div className="stat-value success">{activeCount}</div>
         </div>
         <div className="stat-card">
           <div className="stat-label">招待中</div>
-          <div className="stat-value warning">1</div>
+          <div className="stat-value warning">{invitedCount}</div>
         </div>
         <div className="stat-card">
           <div className="stat-label">無効</div>
-          <div className="stat-value">1</div>
+          <div className="stat-value">{deactivatedCount}</div>
         </div>
       </div>
 
@@ -56,12 +127,14 @@ export function UserManagementPage() {
         <div className="flex-between mb-2">
           <h3 className="card-title mb-0">ユーザー招待</h3>
         </div>
-        <form className="flex gap-1">
+        <form className="flex gap-1" onSubmit={(e) => void handleInvite(e)}>
           <input
             type="email"
             className="form-input"
             placeholder="email@company.com"
             style={{ flex: 1 }}
+            value={inviteEmail}
+            onChange={(e) => setInviteEmail(e.target.value)}
           />
           <button type="submit" className="btn btn-primary">
             招待を送信
@@ -79,26 +152,43 @@ export function UserManagementPage() {
                 <th>メール</th>
                 <th>ロール</th>
                 <th>ステータス</th>
-                <th>最終ログイン</th>
                 <th>操作</th>
               </tr>
             </thead>
             <tbody>
-              {mockUsers.map((user) => (
+              {users.map((user) => (
                 <tr key={user.id}>
-                  <td>{user.displayName}</td>
+                  <td>{user.displayName ?? '-'}</td>
                   <td className="text-secondary text-sm">{user.email}</td>
                   <td>{getRoleBadge(user.role)}</td>
                   <td>{getStatusBadge(user.status)}</td>
-                  <td className="text-secondary text-sm">{user.lastLogin}</td>
                   <td>
                     <div className="flex gap-1">
-                      <button className="btn btn-outline btn-sm">編集</button>
-                      {user.status === 'ACTIVE' && (
-                        <button className="btn btn-danger btn-sm">無効化</button>
+                      {user.status === 'ACTIVE' && user.role !== 'ADMINISTRATOR' && (
+                        <>
+                          <select
+                            className="form-input btn-sm"
+                            value={user.role}
+                            onChange={(e) => void handleChangeRole(user.id, e.target.value as UserRole)}
+                          >
+                            <option value="GENERAL_USER">一般</option>
+                            <option value="STAFF">係</option>
+                          </select>
+                          <button
+                            className="btn btn-danger btn-sm"
+                            onClick={() => void handleDeactivate(user.id)}
+                          >
+                            無効化
+                          </button>
+                        </>
                       )}
                       {user.status === 'DEACTIVATED' && (
-                        <button className="btn btn-success btn-sm">有効化</button>
+                        <button
+                          className="btn btn-success btn-sm"
+                          onClick={() => void handleReactivate(user.id)}
+                        >
+                          有効化
+                        </button>
                       )}
                     </div>
                   </td>

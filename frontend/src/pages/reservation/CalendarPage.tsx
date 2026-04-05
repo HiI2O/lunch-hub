@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { CalendarData, ReservationResult } from '../../api/types';
 import type { ReservationApi } from '../../api/reservation';
+import { isBeforeDeadline } from '../../utils/deadline';
 
 type CalendarPageProps = {
   readonly reservationApi: ReservationApi;
@@ -217,6 +218,9 @@ export function CalendarPage({ reservationApi }: CalendarPageProps): React.JSX.E
           >
             <h3 className="card-title">
               {month + 1}月{selectedDay.dayNum}日
+              {!isBeforeDeadline(selectedDay.dateStr) && (
+                <span className="badge badge-danger ml-1">締切済</span>
+              )}
             </h3>
 
             {selectedDay.hasReservation && selectedDay.reservation ? (
@@ -241,7 +245,7 @@ export function CalendarPage({ reservationApi }: CalendarPageProps): React.JSX.E
                     type="button"
                     className="btn btn-danger"
                     onClick={() => void handleCancelReservation()}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || !isBeforeDeadline(selectedDay.dateStr)}
                   >
                     キャンセル
                   </button>
@@ -279,7 +283,7 @@ export function CalendarPage({ reservationApi }: CalendarPageProps): React.JSX.E
                   type="button"
                   className="btn btn-primary"
                   onClick={() => void handleCreateReservation()}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !isBeforeDeadline(selectedDay.dateStr)}
                 >
                   予約する
                 </button>
