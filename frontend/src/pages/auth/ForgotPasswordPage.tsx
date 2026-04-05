@@ -5,21 +5,14 @@ import { createAuthApi } from '../../api/auth';
 import { ApiError } from '../../api/client';
 import { validators } from '../../utils/validation';
 
-type FormErrors = {
-  email?: string;
-  pin?: string;
-};
-
-// SignupはAuthContext外（未認証状態）で使うため、独自のApiClientを使用
 const client = new ApiClient({
   baseUrl: import.meta.env.VITE_API_BASE_URL ?? '/api',
 });
 const authApi = createAuthApi(client);
 
-export function SignupPage(): React.JSX.Element {
+export function ForgotPasswordPage(): React.JSX.Element {
   const [email, setEmail] = useState('');
-  const [pin, setPin] = useState('');
-  const [errors, setErrors] = useState<FormErrors>({});
+  const [error, setError] = useState('');
   const [apiError, setApiError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -28,17 +21,16 @@ export function SignupPage(): React.JSX.Element {
     e.preventDefault();
 
     const emailError = validators.email(email);
-    const pinError = validators.pin(pin);
-    setErrors({ email: emailError, pin: pinError });
+    setError(emailError ?? '');
 
-    if (emailError || pinError) return;
+    if (emailError) return;
 
     setIsSubmitting(true);
     setApiError('');
 
     try {
-      await authApi.signup(email, pin);
-      setSuccessMessage('招待メールを送信しました。メールをご確認ください。');
+      await authApi.forgotPassword(email);
+      setSuccessMessage('パスワードリセットメールを送信しました。メールをご確認ください。');
     } catch (err: unknown) {
       if (err instanceof ApiError) {
         setApiError(err.message);
@@ -53,7 +45,7 @@ export function SignupPage(): React.JSX.Element {
   if (successMessage) {
     return (
       <>
-        <h2 className="auth-title">登録申請完了</h2>
+        <h2 className="auth-title">メール送信完了</h2>
         <p className="text-center mb-2">{successMessage}</p>
         <div className="text-center">
           <Link to="/login" className="link">ログイン画面に戻る</Link>
@@ -64,7 +56,10 @@ export function SignupPage(): React.JSX.Element {
 
   return (
     <>
-      <h2 className="auth-title">新規登録</h2>
+      <h2 className="auth-title">パスワードリセット</h2>
+      <p className="text-secondary text-sm text-center mb-2">
+        登録済みのメールアドレスを入力してください
+      </p>
       <form onSubmit={(e) => { void handleSubmit(e); }}>
         {apiError && <p className="form-error mb-2">{apiError}</p>}
         <div className="form-group">
@@ -74,35 +69,12 @@ export function SignupPage(): React.JSX.Element {
           <input
             type="text"
             id="email"
-            className={`form-input ${errors.email ? 'error' : ''}`}
+            className={`form-input ${error ? 'error' : ''}`}
             placeholder="example@company.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
-          {errors.email ? (
-            <p className="form-error">{errors.email}</p>
-          ) : (
-            <p className="form-hint">会社のメールアドレスを入力してください</p>
-          )}
-        </div>
-        <div className="form-group">
-          <label className="form-label" htmlFor="pin">
-            社員用PIN
-          </label>
-          <input
-            type="text"
-            id="pin"
-            className={`form-input ${errors.pin ? 'error' : ''}`}
-            placeholder="PIN を入力"
-            value={pin}
-            onChange={(e) => setPin(e.target.value)}
-            maxLength={12}
-          />
-          {errors.pin ? (
-            <p className="form-error">{errors.pin}</p>
-          ) : (
-            <p className="form-hint">6〜12文字の英数字（社内で共有されているPIN）</p>
-          )}
+          {error && <p className="form-error">{error}</p>}
         </div>
         <div className="form-group">
           <button
@@ -110,7 +82,7 @@ export function SignupPage(): React.JSX.Element {
             className="btn btn-primary btn-block"
             disabled={isSubmitting}
           >
-            {isSubmitting ? '送信中...' : '登録申請'}
+            {isSubmitting ? '送信中...' : 'リセットメールを送信'}
           </button>
         </div>
       </form>

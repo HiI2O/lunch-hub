@@ -1,13 +1,11 @@
 import { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
+import { Link, useSearchParams } from 'react-router-dom';
 import { ApiClient } from '../../api/client';
 import { createAuthApi } from '../../api/auth';
 import { ApiError } from '../../api/client';
 import { validators } from '../../utils/validation';
 
 type FormErrors = {
-  displayName?: string;
   password?: string;
   passwordConfirm?: string;
 };
@@ -17,24 +15,22 @@ const client = new ApiClient({
 });
 const authApi = createAuthApi(client);
 
-export function ActivatePage(): React.JSX.Element {
-  const navigate = useNavigate();
+export function ResetPasswordPage(): React.JSX.Element {
   const [searchParams] = useSearchParams();
-  const { login } = useAuth();
   const token = searchParams.get('token');
 
-  const [displayName, setDisplayName] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [errors, setErrors] = useState<FormErrors>({});
   const [apiError, setApiError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!token) {
     return (
       <>
         <h2 className="auth-title">エラー</h2>
-        <p className="form-error text-center">リンクが無効です。招待メールのリンクを確認してください。</p>
+        <p className="form-error text-center">リンクが無効です。パスワードリセットメールのリンクを確認してください。</p>
       </>
     );
   }
@@ -42,30 +38,18 @@ export function ActivatePage(): React.JSX.Element {
   const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
 
-    const displayNameError = validators.displayName(displayName);
     const passwordError = validators.password(password);
     const passwordConfirmError = validators.passwordConfirm(passwordConfirm, password);
-    setErrors({
-      displayName: displayNameError,
-      password: passwordError,
-      passwordConfirm: passwordConfirmError,
-    });
+    setErrors({ password: passwordError, passwordConfirm: passwordConfirmError });
 
-    if (displayNameError || passwordError || passwordConfirmError) return;
+    if (passwordError || passwordConfirmError) return;
 
     setIsSubmitting(true);
     setApiError('');
 
     try {
-      const result = await authApi.activate(token, password, displayName);
-      // AuthContextのloginを呼ばず、直接トークンを設定
-      // activate APIはログインと同じレスポンスを返すので、そのまま認証状態にする
-      void result;
-      // loginで認証状態にする（activateのレスポンスと同等）
-      await login(result.user.email, password).catch(() => {
-        // login失敗の場合はactivateは成功しているのでcalendarに遷移
-      });
-      navigate('/calendar', { replace: true });
+      await authApi.resetPassword(token, password);
+      setSuccessMessage('パスワードを変更しました。ログイン画面からログインしてください。');
     } catch (err: unknown) {
       if (err instanceof ApiError) {
         if (err.code === 'AUTH_INVALID_TOKEN' || err.status === 404 || err.status === 410) {
@@ -81,35 +65,26 @@ export function ActivatePage(): React.JSX.Element {
     }
   };
 
+  if (successMessage) {
+    return (
+      <>
+        <h2 className="auth-title">パスワード変更完了</h2>
+        <p className="text-center mb-2">{successMessage}</p>
+        <div className="text-center">
+          <Link to="/login" className="link">ログイン画面へ</Link>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
-      <h2 className="auth-title">アカウント有効化</h2>
-      <p className="text-secondary text-sm text-center mb-2">
-        パスワードと表示名を設定してアカウントを有効化してください
-      </p>
+      <h2 className="auth-title">新しいパスワードを設定</h2>
       <form onSubmit={(e) => { void handleSubmit(e); }}>
         {apiError && <p className="form-error mb-2">{apiError}</p>}
         <div className="form-group">
-          <label className="form-label" htmlFor="displayName">
-            表示名
-          </label>
-          <input
-            type="text"
-            id="displayName"
-            className={`form-input ${errors.displayName ? 'error' : ''}`}
-            placeholder="山田 太郎"
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-          />
-          {errors.displayName ? (
-            <p className="form-error">{errors.displayName}</p>
-          ) : (
-            <p className="form-hint">他のユーザーに表示される名前です</p>
-          )}
-        </div>
-        <div className="form-group">
           <label className="form-label" htmlFor="password">
-            パスワード
+            新しいパスワード
           </label>
           <input
             type="password"
@@ -145,7 +120,7 @@ export function ActivatePage(): React.JSX.Element {
             className="btn btn-primary btn-block"
             disabled={isSubmitting}
           >
-            {isSubmitting ? '処理中...' : 'アカウントを有効化'}
+            {isSubmitting ? '処理中...' : 'パスワードを変更'}
           </button>
         </div>
       </form>

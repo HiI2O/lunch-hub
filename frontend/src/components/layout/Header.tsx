@@ -1,19 +1,28 @@
-import { Link } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
 
-interface HeaderProps {
-  title: string;
-  userName: string;
-}
+export function Header(): React.JSX.Element {
+  const { user, logout } = useAuth();
 
-export function Header({ title, userName }: HeaderProps) {
+  const handleLogout = (): void => {
+    void logout();
+  };
+
+  if (!user) {
+    return (
+      <header className="header">
+        <h1 className="header-title">Lunch Hub</h1>
+      </header>
+    );
+  }
+
   return (
     <header className="header">
-      <h1 className="header-title">{title}</h1>
+      <h1 className="header-title">Lunch Hub</h1>
       <div className="header-user">
-        <div className="header-user-avatar">{userName.charAt(0)}</div>
-        <Link to="/login" className="btn btn-outline btn-sm">
+        <div className="header-user-avatar">{user.displayName.charAt(0)}</div>
+        <button type="button" className="btn btn-outline btn-sm" onClick={handleLogout}>
           ログアウト
-        </Link>
+        </button>
       </div>
     </header>
   );
