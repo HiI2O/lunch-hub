@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { ReservationResult } from '../../api/types';
 import type { ReservationApi } from '../../api/reservation';
+import { isBeforeDeadline } from '../../utils/deadline';
 
 type HistoryPageProps = {
   readonly reservationApi: ReservationApi;
@@ -111,7 +112,7 @@ export function HistoryPage({ reservationApi }: HistoryPageProps): React.JSX.Ele
                           type="button"
                           className="btn btn-danger btn-sm"
                           onClick={() => void handleCancel(item.id)}
-                          disabled={cancellingId === item.id}
+                          disabled={cancellingId === item.id || !isBeforeDeadline(item.reservationDate)}
                         >
                           キャンセル
                         </button>

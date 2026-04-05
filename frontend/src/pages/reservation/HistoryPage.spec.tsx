@@ -78,6 +78,12 @@ const mockReservations: ReservationResult[] = [
   },
 ];
 
+vi.mock('../../utils/deadline', () => ({
+  isBeforeDeadline: vi.fn().mockReturnValue(true),
+}));
+
+import { isBeforeDeadline } from '../../utils/deadline';
+
 describe('HistoryPage', () => {
   it('予約一覧をAPIから取得して表示する', async () => {
     const getMyReservations = vi.fn().mockResolvedValue(mockReservations);
@@ -133,6 +139,21 @@ describe('HistoryPage', () => {
     await waitFor(() => {
       expect(cancelReservation).toHaveBeenCalledWith('r1');
     });
+  });
+
+  it('締め切り後のCONFIRMED予約はキャンセルボタンが無効化される', async () => {
+    vi.mocked(isBeforeDeadline).mockReturnValue(false);
+    const getMyReservations = vi.fn().mockResolvedValue(mockReservations);
+    renderHistoryPage({ getMyReservations });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /キャンセル/ })).toBeInTheDocument();
+    });
+
+    const cancelBtn = screen.getByRole('button', { name: /キャンセル/ });
+    expect(cancelBtn).toBeDisabled();
+
+    vi.mocked(isBeforeDeadline).mockReturnValue(true);
   });
 
   it('予約がない場合メッセージを表示する', async () => {

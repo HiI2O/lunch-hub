@@ -62,6 +62,13 @@ function renderCalendarPage(
   return { api };
 }
 
+// 締め切り判定のモック
+vi.mock('../../utils/deadline', () => ({
+  isBeforeDeadline: vi.fn().mockReturnValue(true),
+}));
+
+import { isBeforeDeadline } from '../../utils/deadline';
+
 describe('CalendarPage', () => {
   describe('カレンダー表示', () => {
     it('年月と曜日ヘッダーが表示される', async () => {
@@ -180,6 +187,69 @@ describe('CalendarPage', () => {
           expect.objectContaining({ paymentMethod: 'CASH' }),
         );
       });
+    });
+  });
+
+  describe('締め切り表示', () => {
+    it('締め切り後は予約ダイアログに「締切済」が表示され予約ボタンが無効化される', async () => {
+      vi.mocked(isBeforeDeadline).mockReturnValue(false);
+      const user = userEvent.setup();
+      renderCalendarPage();
+
+      await waitFor(() => {
+        expect(screen.getByText(/\d{4}年/)).toBeInTheDocument();
+      });
+
+      const dayButton = screen.getByRole('button', { name: '15' });
+      await user.click(dayButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('締切済')).toBeInTheDocument();
+      });
+
+      // 予約ボタンが無効化されている
+      const submitBtn = screen.getByRole('button', { name: /予約する/ });
+      expect(submitBtn).toBeDisabled();
+
+      // クリーンアップ
+      vi.mocked(isBeforeDeadline).mockReturnValue(true);
+    });
+
+    it('締め切り後はキャンセルボタンが無効化される', async () => {
+      vi.mocked(isBeforeDeadline).mockReturnValue(false);
+      const user = userEvent.setup();
+      const calendarData: CalendarData = {
+        '2026-04-15': { hasReservation: true, status: 'CONFIRMED' },
+      };
+      const getCalendarData = vi.fn().mockResolvedValue(calendarData);
+      const getMyReservations = vi.fn().mockResolvedValue([
+        {
+          id: 'r1',
+          reservationDate: '2026-04-15',
+          paymentMethod: 'CASH',
+          status: 'CONFIRMED',
+          ticketId: null,
+          createdAt: '2026-04-08T10:00:00Z',
+        },
+      ]);
+
+      renderCalendarPage({ getCalendarData, getMyReservations });
+
+      await waitFor(() => {
+        expect(getCalendarData).toHaveBeenCalled();
+      });
+
+      const dayButton = screen.getByRole('button', { name: '15' });
+      await user.click(dayButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('締切済')).toBeInTheDocument();
+      });
+
+      const cancelBtn = screen.getByRole('button', { name: /キャンセル/ });
+      expect(cancelBtn).toBeDisabled();
+
+      vi.mocked(isBeforeDeadline).mockReturnValue(true);
     });
   });
 
