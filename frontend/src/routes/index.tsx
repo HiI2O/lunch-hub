@@ -4,6 +4,7 @@ import { createReservationApi } from '../api/reservation';
 import { createStaffReservationApi } from '../api/staff-reservation';
 import { createTicketApi } from '../api/ticket';
 import { createOrderApi } from '../api/order';
+import { createAdminUserApi } from '../api/admin-user';
 
 // Layouts
 import { AuthLayout } from '../components/layout/AuthLayout';
@@ -41,6 +42,7 @@ const reservationApi = createReservationApi(apiClient);
 const staffReservationApi = createStaffReservationApi(apiClient);
 const ticketApi = createTicketApi(apiClient);
 const orderApi = createOrderApi(apiClient);
+const adminUserApi = createAdminUserApi(apiClient);
 
 export { apiClient };
 
@@ -89,7 +91,7 @@ export const router = createBrowserRouter([
           {
             element: <RoleGuard roles={['ADMINISTRATOR']} />,
             children: [
-              { path: 'admin/users', element: <UserManagementPage /> },
+              { path: 'admin/users', element: <UserManagementPage adminUserApi={adminUserApi} /> },
             ],
           },
         ],

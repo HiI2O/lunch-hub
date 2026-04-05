@@ -142,6 +142,23 @@ export type PurchaseReservationResult = {
   readonly ticketId: string | null;
 };
 
+// --- 管理者ユーザー管理型 ---
+
+export type AdminUserProfile = {
+  readonly id: string;
+  readonly email: string;
+  readonly displayName: string | null;
+  readonly role: UserRole;
+  readonly status: UserStatus;
+  readonly lastLoginAt: string | null;
+  readonly createdAt: string;
+};
+
+export type InviteResult = {
+  readonly userId: string;
+  readonly email: string;
+};
+
 // --- 注文型 ---
 
 export type OrderStatus = 'PENDING' | 'PLACED';
