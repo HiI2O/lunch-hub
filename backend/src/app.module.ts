@@ -14,6 +14,8 @@ import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { IamModule } from './modules/iam/iam.module.js';
 import { ReservationModule } from './modules/reservation/reservation.module.js';
+import { TicketModule } from './modules/ticket/ticket.module.js';
+import { OrderModule } from './modules/order/order.module.js';
 
 @Module({
   imports: [
@@ -40,6 +42,8 @@ import { ReservationModule } from './modules/reservation/reservation.module.js';
     EventEmitterModule.forRoot(),
     IamModule,
     ReservationModule,
+    TicketModule,
+    OrderModule,
   ],
   controllers: [AppController],
   providers: [AppService],

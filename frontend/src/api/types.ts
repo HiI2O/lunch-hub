@@ -117,3 +117,39 @@ export type StaffReservationsMeta = {
   readonly cashCount: number;
   readonly ticketCount: number;
 };
+
+// --- チケット型 ---
+
+export type TicketStatus = 'PENDING' | 'RECEIVED';
+
+export type PurchaseStatus = 'PENDING' | 'RECEIVED' | 'CANCELLED';
+
+export type TicketResult = {
+  readonly id: string;
+  readonly ownerId: string;
+  readonly remainingCount: number;
+  readonly status: TicketStatus;
+  readonly purchaseDate: string;
+};
+
+export type PurchaseReservationResult = {
+  readonly id: string;
+  readonly userId: string;
+  readonly purchaseDate: string;
+  readonly quantity: number;
+  readonly totalTickets: number;
+  readonly status: PurchaseStatus;
+  readonly ticketId: string | null;
+};
+
+// --- 注文型 ---
+
+export type OrderStatus = 'PENDING' | 'PLACED';
+
+export type OrderResult = {
+  readonly id: string;
+  readonly orderDate: string;
+  readonly totalCount: number;
+  readonly status: OrderStatus;
+  readonly placedAt: string | null;
+};
