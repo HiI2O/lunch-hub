@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { ApiClient } from '../../api/client';
 import { createAuthApi } from '../../api/auth';
 import { ApiError } from '../../api/client';
+import { apiClient } from '../../api/client-instance';
 import { validators } from '../../utils/validation';
 
 type FormErrors = {
@@ -12,10 +12,7 @@ type FormErrors = {
   passwordConfirm?: string;
 };
 
-const client = new ApiClient({
-  baseUrl: import.meta.env.VITE_API_BASE_URL ?? '/api',
-});
-const authApi = createAuthApi(client);
+const authApi = createAuthApi(apiClient);
 
 export function ActivatePage(): React.JSX.Element {
   const navigate = useNavigate();
