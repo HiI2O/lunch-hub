@@ -1,5 +1,4 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
-import { ApiClient } from '../api/client';
 import { createReservationApi } from '../api/reservation';
 import { createStaffReservationApi } from '../api/staff-reservation';
 import { createTicketApi } from '../api/ticket';
@@ -35,9 +34,8 @@ import { GuestReservationPage } from '../pages/admin/GuestReservationPage';
 import { UserManagementPage } from '../pages/admin/UserManagementPage';
 
 // API Client instances
-const apiClient = new ApiClient({
-  baseUrl: import.meta.env['VITE_API_BASE_URL'] ?? 'http://localhost:3000/api',
-});
+import { apiClient } from '../api/client-instance';
+
 const reservationApi = createReservationApi(apiClient);
 const staffReservationApi = createStaffReservationApi(apiClient);
 const ticketApi = createTicketApi(apiClient);

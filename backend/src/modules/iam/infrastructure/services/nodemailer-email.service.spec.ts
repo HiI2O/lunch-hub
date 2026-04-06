@@ -46,6 +46,26 @@ describe('NodemailerEmailService', () => {
         auth: { user: 'user', pass: 'pass' },
       });
     });
+
+    it('mail.user未設定時はauthなしでTransporterを生成する', () => {
+      createService({ 'mail.user': undefined, 'mail.pass': undefined });
+
+      expect(createTransport).toHaveBeenCalledWith({
+        host: 'localhost',
+        port: 1025,
+        secure: false,
+      });
+    });
+
+    it('mail.userが空文字の場合もauthなしでTransporterを生成する', () => {
+      createService({ 'mail.user': '', 'mail.pass': '' });
+
+      expect(createTransport).toHaveBeenCalledWith({
+        host: 'localhost',
+        port: 1025,
+        secure: false,
+      });
+    });
   });
 
   describe('send', () => {

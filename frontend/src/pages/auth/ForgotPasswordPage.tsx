@@ -1,14 +1,11 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ApiClient } from '../../api/client';
 import { createAuthApi } from '../../api/auth';
 import { ApiError } from '../../api/client';
+import { apiClient } from '../../api/client-instance';
 import { validators } from '../../utils/validation';
 
-const client = new ApiClient({
-  baseUrl: import.meta.env.VITE_API_BASE_URL ?? '/api',
-});
-const authApi = createAuthApi(client);
+const authApi = createAuthApi(apiClient);
 
 export function ForgotPasswordPage(): React.JSX.Element {
   const [email, setEmail] = useState('');

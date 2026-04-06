@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createTransport, type Transporter } from 'nodemailer';
+import type SMTPTransport from 'nodemailer/lib/smtp-transport';
 import {
   IEmailService,
   type SendEmailParams,
@@ -13,15 +14,22 @@ export class NodemailerEmailService extends IEmailService {
 
   constructor(configService: ConfigService) {
     super();
-    this.transporter = createTransport({
+
+    const user = configService.get<string>('mail.user');
+    const pass = configService.get<string>('mail.pass');
+    
+    const transportConfig: SMTPTransport.Options = {
       host: configService.get<string>('mail.host'),
       port: configService.get<number>('mail.port'),
       secure: configService.get<boolean>('mail.secure', false),
-      auth: {
-        user: configService.get<string>('mail.user'),
-        pass: configService.get<string>('mail.pass'),
-      },
-    });
+    };
+
+    if (user) {
+      transportConfig.auth = { user, pass };
+    }
+
+    this.transporter = createTransport(transportConfig);
+
     this.fromAddress =
       configService.get<string>('mail.from') ?? 'noreply@lunch-hub.local';
   }
