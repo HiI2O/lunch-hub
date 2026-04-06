@@ -25,7 +25,8 @@ describe('CreateOrderCommand', () => {
 ## 命名・配置
 
 - ユニットテスト: 実装ファイルと同階層に `*.spec.ts`
-- E2Eテスト: `backend/test/` に `*.e2e-spec.ts`
+- Backend E2Eテスト: `backend/test/` に `*.e2e-spec.ts`（Jest + supertest）
+- ブラウザ E2Eテスト: `frontend/e2e/` に `tc{番号}-*.spec.ts`（Playwright）→ 詳細は `e2e-playwright.md` 参照
 
 ## ルール
 
